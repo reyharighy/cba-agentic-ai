@@ -66,10 +66,10 @@ class UserInterface:
         """
         if st.session_state.get("init_app") is None:
             self.db_manager.init_internal_database()
-            st.session_state["success_message"] = False
-            st.session_state["error_message"] = False
-            st.session_state["punt_response"] = False
-            st.session_state["last_punt_response"] = []
+            st.session_state["success_toast"] = False
+            st.session_state["error_toast"] = False
+            st.session_state["punt_toast"] = False
+            st.session_state["punt_response"] = []
             st.session_state["init_app"] = not None
             st.rerun()
 
@@ -111,7 +111,7 @@ class UserInterface:
                 self._render_chat_turn_block(on_processing_request=True)
             except Exception as e:
                 st.error(e)
-                st.session_state["error_message"] = True
+                st.session_state["error_toast"] = True
 
             st.rerun()
 
@@ -202,11 +202,11 @@ class UserInterface:
         self.session_memory.chat_output = graph_output["messages"][-1].content
 
         if graph_output["summarization"]:
-            st.session_state["success_message"] = True
+            st.session_state["success_toast"] = True
         else:
-            st.session_state["punt_response"] = True
-            st.session_state["last_punt_response"].append(self.session_memory.chat_input)
-            st.session_state["last_punt_response"].append(self.session_memory.chat_output)
+            st.session_state["punt_toast"] = True
+            st.session_state["punt_response"].append(self.session_memory.chat_input)
+            st.session_state["punt_response"].append(self.session_memory.chat_output)
 
         st.write_stream(self._stream_generator)
 
@@ -229,25 +229,25 @@ class UserInterface:
         
         :param self: Description
         """
-        if st.session_state["success_message"]:
-            st.session_state["success_message"] = False
+        if st.session_state["success_toast"]:
+            st.session_state["success_toast"] = False
 
             st.toast(
                 body="###### **Your request is completed.**", 
                 duration="long"
             )
 
-        if st.session_state["punt_response"]:
-            st.session_state["punt_response"] = False
-            self._render_chat_turn_block(chat_turn=st.session_state["last_punt_response"])
+        if st.session_state["punt_toast"]:
+            st.session_state["punt_toast"] = False
+            self._render_chat_turn_block(chat_turn=st.session_state["punt_response"])
 
             st.toast(
                 body="###### **Your request is out of business analytics domain. This chat turn will not be persisted.**", 
                 duration="long"
             )
 
-        if st.session_state["error_message"]:
-            st.session_state["error_message"] = False
+        if st.session_state["error_toast"]:
+            st.session_state["error_toast"] = False
 
             st.toast(
                 body="###### **System fails to process your request. Please try again.**", 
