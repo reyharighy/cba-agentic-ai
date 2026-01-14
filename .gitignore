@@ -15,5 +15,6 @@ wheels/
 # Notebooks
 .notebooks
 
-# Working dataset
+# Development files
 context/working_dataset.csv
+docker_scripts/
