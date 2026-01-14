@@ -7,6 +7,8 @@ from typing import (
     Dict,
     Generator,
     List,
+    Optional,
+    Union,
 )
 
 # third-party
@@ -51,12 +53,12 @@ class UserInterface:
         
         :param self: Description
         """
-        self.init_session()
-        self.display_chat_history()
-        self.process_chat_input()
-        self.show_toast_message()
+        self._init_session_state_and_page_config()
+        self._display_chat_history()
+        self._process_chat_input()
+        self._show_toast_message()
 
-    def init_session(self) -> None:
+    def _init_session_state_and_page_config(self) -> None:
         """
         Docstring for init_session
         
@@ -67,6 +69,7 @@ class UserInterface:
             st.session_state["success_message"] = False
             st.session_state["error_message"] = False
             st.session_state["punt_response"] = False
+            st.session_state["last_punt_response"] = []
             st.session_state["init_app"] = not None
             st.rerun()
 
@@ -76,7 +79,7 @@ class UserInterface:
             initial_sidebar_state="auto"
         )
 
-    def display_chat_history(self) -> None:
+    def _display_chat_history(self) -> None:
         """
         Docstring for display_chat_history
         
@@ -86,16 +89,16 @@ class UserInterface:
         self.session_memory.turn_num = len(chat_history)
 
         if self.session_memory.turn_num > 0:
-            chat_turn_slicer: List[ChatHistory] = []
+            chat_turn_slicer: List[Union[ChatHistory, str]] = []
 
             for chat in chat_history:
                 chat_turn_slicer.append(chat)
 
                 if len(chat_turn_slicer) == 2:
-                    self.render_chat_turn_block(chat_turn_pair=chat_turn_slicer)
+                    self._render_chat_turn_block(chat_turn=chat_turn_slicer)
                     chat_turn_slicer = []
 
-    def process_chat_input(self) -> None:
+    def _process_chat_input(self) -> None:
         """
         Docstring for process_chat_input
         
@@ -105,34 +108,65 @@ class UserInterface:
             self.session_memory.chat_input = chat_input
 
             try:
-                self.render_chat_turn_block(on_processing_request=True)
+                self._render_chat_turn_block(on_processing_request=True)
             except Exception as e:
                 st.error(e)
                 st.session_state["error_message"] = True
 
             st.rerun()
 
-    def render_chat_turn_block(self, on_processing_request: bool = False, chat_turn_pair: List[ChatHistory] = []) -> None:
+    def _render_chat_turn_block(self, on_processing_request: bool = False, chat_turn: List[Union[ChatHistory, str]] = []) -> None:
         """
-        Docstring for render_chat_turn_block
+        Docstring for _render_chat_turn_block
         
         :param self: Description
         :param on_processing_request: Description
         :type on_processing_request: bool
-        :param chat_turn_pair: Description
-        :type chat_turn_pair: List[ChatHistory]
+        :param chat_turn: Description
+        :type chat_turn: List[Union[ChatHistory, str]]
         """
         st.divider()
 
         with st.expander('Click to toggle cell', expanded=True):
             with st.container(border=True):
                 st.badge('Your Prompt', color='orange')
-                st.write(self.session_memory.chat_input if on_processing_request else chat_turn_pair[0].content)
+
+                self._render_turn_element(
+                    input_type=True,
+                    on_processing_request=on_processing_request,
+                    turn_element=chat_turn[0] if not on_processing_request else None
+                )
 
             st.badge('System Response', color='blue')
-            self.graph_invocation() if on_processing_request else st.write(chat_turn_pair[1].content)
 
-    def graph_invocation(self) -> None:
+            self._render_turn_element(
+                input_type=False,
+                on_processing_request=on_processing_request,
+                turn_element=chat_turn[1] if not on_processing_request else None
+            )
+    
+    def _render_turn_element(self, input_type: bool, on_processing_request: bool, turn_element: Optional[Union[ChatHistory, str]]) -> None:
+        """
+        Docstring for _render_turn_element
+        
+        :param self: Description
+        :param element_type: Description
+        :type element_type: Literal["input", "output"]
+        :param on_processing_request: Description
+        :type on_processing_request: bool
+        :param turn_element: Description
+        :type turn_element: Optional[Union[ChatHistory, str]]
+        """
+        if on_processing_request:
+            st.write(self.session_memory.chat_input) if input_type else self._graph_invocation()
+        elif isinstance(turn_element, ChatHistory):
+            st.write(turn_element.content)
+        elif isinstance(turn_element, str):
+            st.write(turn_element)
+        else:
+            raise ValueError("'turn_element' must not be None when 'on_processing_request' is False")
+
+    def _graph_invocation(self) -> None:
         """
         Docstring for graph_invocation
         
@@ -171,10 +205,12 @@ class UserInterface:
             st.session_state["success_message"] = True
         else:
             st.session_state["punt_response"] = True
+            st.session_state["last_punt_response"].append(self.session_memory.chat_input)
+            st.session_state["last_punt_response"].append(self.session_memory.chat_output)
 
-        st.write_stream(self.stream_generator)
+        st.write_stream(self._stream_generator)
 
-    def stream_generator(self) -> Generator:
+    def _stream_generator(self) -> Generator:
         """
         Docstring for stream_generator
         
@@ -187,7 +223,7 @@ class UserInterface:
                 yield word + " "
                 sleep(0.02)
 
-    def show_toast_message(self) -> None:
+    def _show_toast_message(self) -> None:
         """
         Docstring for show_toast_message
         
@@ -195,27 +231,25 @@ class UserInterface:
         """
         if st.session_state["success_message"]:
             st.session_state["success_message"] = False
+
             st.toast(
                 body="###### **Your request is completed.**", 
                 duration="long"
             )
 
-            return
-
         if st.session_state["punt_response"]:
             st.session_state["punt_response"] = False
+            self._render_chat_turn_block(chat_turn=st.session_state["last_punt_response"])
+
             st.toast(
-                body="###### **Your request is outside the business analytics domain. The messages will not be saved.**", 
+                body="###### **Your request is out of business analytics domain. This chat turn will not be persisted.**", 
                 duration="long"
             )
 
-            sleep(10)
-
         if st.session_state["error_message"]:
             st.session_state["error_message"] = False
+
             st.toast(
                 body="###### **System fails to process your request. Please try again.**", 
                 duration="long"
             )
-
-            sleep(10)
