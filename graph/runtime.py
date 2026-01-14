@@ -10,7 +10,7 @@ from typing import (
 )
 
 # internal
-from context import ShortMemory
+from context.models import ShortMemory
 
 @dataclass
 class Context:

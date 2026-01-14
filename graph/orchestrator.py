@@ -42,12 +42,12 @@ from pandas.api.types import (
 # internal
 from .runtime import Context
 from .state import State
-from context import (
+from context.database import DatabaseManager
+from context.models import (
     ChatHistory,
     ChatHistoryCreate,
     ChatHistoryShow,
-    DatabaseManager,
-    ShortMemoryCreate,
+    ShortMemoryCreate
 )
 from schema import (
     AnalysisOrchestration,
@@ -70,7 +70,7 @@ class Orchestrator:
         
         :param self: Description
         """
-        self.db_manager: DatabaseManager = DatabaseManager()
+        self.database_manager: DatabaseManager = DatabaseManager()
 
         self.gpt_120b: BaseChatModel = ChatGroq(
             model="openai/gpt-oss-120b",
@@ -142,7 +142,7 @@ class Orchestrator:
         if state["intent_comprehension"]:
             for turn in state["intent_comprehension"].relevant_turns:
                 params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.db_manager.show_chat_history(params)
+                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
 
                 for chat in relevant_turn:
                     if chat.role == "Human":
@@ -200,7 +200,7 @@ class Orchestrator:
         if state["intent_comprehension"]:
             for turn in state["intent_comprehension"].relevant_turns:
                 params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.db_manager.show_chat_history(params)
+                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
 
                 for chat in relevant_turn:
                     if chat.role == "Human":
@@ -256,7 +256,7 @@ class Orchestrator:
             context_prompt += "\n\nDataframe object representation:\n"
             context_prompt += buffer.getvalue()
             context_prompt += "\n\nDataframe object is extracted previously using the following SQL query:\n"
-            context_prompt += str(self.db_manager.get_last_executed_sql_query())
+            context_prompt += str(self.database_manager.get_last_executed_sql_query())
         else:
             context_prompt += "\n\nThere is no dataframe object representation."
 
@@ -267,7 +267,7 @@ class Orchestrator:
         if state["intent_comprehension"]:
             for turn in state["intent_comprehension"].relevant_turns:
                 params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.db_manager.show_chat_history(params)
+                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
 
                 for chat in relevant_turn:
                     if chat.role == "Human":
@@ -330,7 +330,7 @@ class Orchestrator:
         if state["intent_comprehension"]:
             for turn in state["intent_comprehension"].relevant_turns:
                 params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.db_manager.show_chat_history(params)
+                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
 
                 for chat in relevant_turn:
                     if chat.role == "Human":
@@ -357,9 +357,9 @@ class Orchestrator:
         if state["analysis_orchestration"]:
             if state["analysis_orchestration"].sql_query:
                 sql_query: str = state["analysis_orchestration"].sql_query
-                self.db_manager.retrieve_external_data(sql_query)
+                self.database_manager.retrieve_external_data(sql_query)
 
-                return {"dataframe": self.db_manager.get_working_dataframe()}
+                return {"dataframe": self.database_manager.get_working_dataframe()}
 
             raise ValueError("'analysis_orchestration' state does not contains 'sql_query' attribute when retrieving data")
         else:
@@ -419,7 +419,7 @@ class Orchestrator:
         if state["intent_comprehension"]:
             for turn in state["intent_comprehension"].relevant_turns:
                 params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.db_manager.show_chat_history(params)
+                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
 
                 for chat in relevant_turn:
                     if chat.role == "Human":
@@ -551,7 +551,7 @@ class Orchestrator:
         if state["intent_comprehension"]:
             for turn in state["intent_comprehension"].relevant_turns:
                 params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.db_manager.show_chat_history(params)
+                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
 
                 for chat in relevant_turn:
                     if chat.role == "Human":
@@ -706,7 +706,7 @@ class Orchestrator:
         if state["intent_comprehension"]:
             for turn in state["intent_comprehension"].relevant_turns:
                 params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.db_manager.show_chat_history(params)
+                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
 
                 for chat in relevant_turn:
                     if chat.role == "Human":
@@ -745,7 +745,7 @@ class Orchestrator:
             content=str(state["messages"][0].content)
         )
 
-        self.db_manager.store_chat_history(create_chat_history_params())
+        self.database_manager.store_chat_history(create_chat_history_params())
 
         create_chat_history_params = ChatHistoryCreate(
             turn_num=turn_num,
@@ -753,7 +753,7 @@ class Orchestrator:
             content=str(state["messages"][1].content)
         )
 
-        self.db_manager.store_chat_history(create_chat_history_params())
+        self.database_manager.store_chat_history(create_chat_history_params())
 
         create_short_memory_params: ShortMemoryCreate = ShortMemoryCreate(
             turn_num=turn_num,
@@ -761,7 +761,7 @@ class Orchestrator:
             sql_query=state["analysis_orchestration"].sql_query if state["analysis_orchestration"] else None
         )
 
-        self.db_manager.store_short_memory(create_short_memory_params())
+        self.database_manager.store_short_memory(create_short_memory_params())
 
         return {"summarization": llm_output}
 

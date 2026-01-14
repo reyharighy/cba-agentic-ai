@@ -23,10 +23,8 @@ from cache import (
     load_prompts_set,
     load_sandbox_bootstrap,
 )
-from context import (
-    ChatHistory,
-    DatabaseManager,
-)
+from context.database import DatabaseManager
+from context.models import ChatHistory
 from graph import (
     Context,
     State,
@@ -45,7 +43,7 @@ class UserInterface:
         :param self: Description
         """
         self.session_memory: SessionMemory = SessionMemory()
-        self.db_manager: DatabaseManager = DatabaseManager()
+        self.database_manager: DatabaseManager = DatabaseManager()
 
     def run(self) -> None:
         """
@@ -65,7 +63,7 @@ class UserInterface:
         :param self: Description
         """
         if st.session_state.get("init_app") is None:
-            self.db_manager.init_internal_database()
+            self.database_manager.init_internal_database()
             st.session_state["success_toast"] = False
             st.session_state["error_toast"] = False
             st.session_state["punt_toast"] = False
@@ -85,7 +83,7 @@ class UserInterface:
         
         :param self: Description
         """
-        chat_history: List[ChatHistory] = self.db_manager.index_chat_history()
+        chat_history: List[ChatHistory] = self.database_manager.index_chat_history()
         self.session_memory.turn_num = len(chat_history)
 
         if self.session_memory.turn_num > 0:
@@ -178,7 +176,7 @@ class UserInterface:
             messages=[HumanMessage(self.session_memory.chat_input)],
             intent_comprehension=None,
             request_classification=None,
-            dataframe=self.db_manager.get_working_dataframe(),
+            dataframe=self.database_manager.get_working_dataframe(),
             analysis_orchestration=None,
             computation_planning=None,
             execution=None,
@@ -189,8 +187,8 @@ class UserInterface:
         graph_context: Context = Context(
             turn_num=self.session_memory.turn_num,
             prompts_set=load_prompts_set(),
-            short_memories=self.db_manager.index_short_memory(),
-            external_db_info=self.db_manager.inspect_external_database(),
+            short_memories=self.database_manager.index_short_memory(),
+            external_db_info=self.database_manager.inspect_external_database(),
             sandbox_bootstrap=load_sandbox_bootstrap()
         )
 

@@ -1,22 +1,7 @@
 """
-Docstring for context
+Docstring for context.system_prompts
 """
-from .chat_history import (
-    ChatHistory,
-    ChatHistoryCreate,
-    ChatHistoryShow,
-)
-from .db_config import(
-    external_db_url,
-    internal_db_url,
-)
-from .db_manager import DatabaseManager
-from .short_memory import (
-    ShortMemory,
-    ShortMemoryCreate,
-    ShortMemoryShow,
-)
-from .system_prompt import (
+from .prompts import (
     ANALYSIS_RESPONSE,
     ANALYSIS_ORCHESTRATION,
     COMPUTATION_PLANNING,
@@ -32,15 +17,6 @@ from .system_prompt import (
 )
 
 __all__ = [
-    "ChatHistory",
-    "ChatHistoryCreate",
-    "ChatHistoryShow",
-    "DatabaseManager",
-    "external_db_url",
-    "internal_db_url",
-    "ShortMemory",
-    "ShortMemoryCreate",
-    "ShortMemoryShow",
     "ANALYSIS_RESPONSE",
     "ANALYSIS_ORCHESTRATION",
     "COMPUTATION_PLANNING",

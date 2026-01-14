@@ -8,7 +8,7 @@ from typing import Dict
 from langgraph.graph.state import CompiledStateGraph
 
 # internal
-from context import (
+from context.system_prompts import (
     ANALYSIS_RESPONSE,
     ANALYSIS_ORCHESTRATION,
     COMPUTATION_PLANNING,

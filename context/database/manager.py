@@ -31,22 +31,18 @@ from sqlalchemy import (
 )
 
 # internal
-from .chat_history import (
-    ChatHistory,
-    ChatHistoryShow,
-)
-from .db_config import (
+from .config import (
     external_db_url,
     internal_db_url,
 )
-from .db_table import (
-    chat_histories,
-    metadata,
-    short_memories,
-)
-from .short_memory import (
+from context.models import (
+    ChatHistory,
+    ChatHistoryShow,
     ShortMemory,
     ShortMemoryShow,
+    chat_histories,
+    short_memories,
+    table_schema_metadata,
 )
 
 class DatabaseManager:
@@ -70,7 +66,7 @@ class DatabaseManager:
         
         :param self: Description
         """
-        metadata.create_all(self.internal)
+        table_schema_metadata.create_all(self.internal)
 
     def index_chat_history(self) -> List[ChatHistory]:
         """
