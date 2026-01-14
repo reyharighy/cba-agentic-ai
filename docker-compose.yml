@@ -1,0 +1,58 @@
+services:
+  streamlit:
+    build:
+      context: .
+      args:
+        STREAMLIT_PORT: ${STREAMLIT_PORT}
+        WORKDIR_PATH: ${WORKDIR_PATH}
+        SQLITE_DB_PATH: ${SQLITE_DB_PATH}
+    env_file:
+      - .env
+    ports:
+      - "${STREAMLIT_PORT}:${STREAMLIT_PORT}"
+    volumes:
+      - './:${WORKDIR_PATH}'
+      - vol-sqlite-db:${SQLITE_DB_PATH}
+    networks:
+      - net-system
+    depends_on:
+      pgsql:
+        condition: service_healthy
+  pgsql:
+    image: 'postgres:17'
+    env_file:
+      - .env
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    volumes:
+      - 'vol-pgsql:/var/lib/postgresql/data'
+    networks:
+      - net-system
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "${POSTGRES_DB}", "-U", "${POSTGRES_USER}"]
+      retries: 3
+      timeout: 5s
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${PGADMIN_PORT}:80"
+    volumes:
+      - 'vol-pgadmin:/var/lib/pgadmin'
+    networks:
+      - net-system
+    depends_on:
+      pgsql:
+        condition: service_healthy
+volumes:
+  vol-sqlite-db:
+    driver: local
+  vol-pgsql:
+    driver: local
+  vol-pgadmin:
+    driver: local
+networks:
+  net-system:
+    driver: bridge

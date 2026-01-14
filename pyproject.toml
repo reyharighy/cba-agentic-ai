@@ -1,0 +1,17 @@
+[project]
+name = "cba-agentic-ai"
+version = "0.1.0"
+description = "Conversational Business Analytics System Based on Agentic Artificial Intelligence Using a Graph-Based Orchestration Approach"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "e2b-code-interpreter>=2.4.1",
+    "langchain-groq>=1.1.1",
+    "langgraph>=1.0.5",
+    "pandas>=2.3.3",
+    "psycopg2>=2.9.11",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.1",
+    "sqlalchemy>=2.0.45",
+    "streamlit>=1.52.2",
+]

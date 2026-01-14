@@ -1,0 +1,39 @@
+# Python cache and build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Virtual environments
+.venv/
+
+# Git metadata
+.git/
+.gitignore
+
+# Environment and secrets
+.env
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+
+# Test artifacts and local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Streamlit cache (if any)
+.streamlit/
+
+# Docker files themselves (optional, but clean)
+docker-compose.yml
+Dockerfile
+
+# Notebooks
+.notebooks
