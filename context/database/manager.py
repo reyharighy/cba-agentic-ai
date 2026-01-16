@@ -30,10 +30,6 @@ from sqlalchemy import (
 )
 
 # internal
-from .config import (
-    external_db_url,
-    internal_db_url,
-)
 from context.datasets import working_dataset_path
 from context.models import (
     ChatHistory,
@@ -46,7 +42,7 @@ from context.models import (
 )
 
 class DatabaseManager:
-    def __init__(self) -> None:
+    def __init__(self, internal_db_url: str, external_db_url: str) -> None:
         """
         Docstring for __init__
         
