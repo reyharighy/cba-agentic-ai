@@ -3,24 +3,19 @@ Docstring for graph.orchestrator
 """
 # standard
 import sys
-from io import StringIO
 from typing import (
     Any,
     Dict,
-    List,
     Literal,
     Sequence,
 )
 
 # third-party
-import pandas as pd
-import streamlit as st
 from e2b_code_interpreter import Execution
 from e2b_code_interpreter.code_interpreter_sync import Sandbox
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import (
     AIMessage,
-    HumanMessage,
     SystemMessage
 )
 from langchain_core.runnables import Runnable
@@ -33,20 +28,15 @@ from langgraph.graph import (
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
 from langgraph.types import Command
-from pandas.api.types import (
-    is_datetime64_any_dtype,
-    is_numeric_dtype,
-    is_object_dtype,
-)
 
 # internal
+from .operator import Operator
 from .runtime import Context
 from .state import State
 from context.database import DatabaseManager
+from context.datasets import working_dataset_path
 from context.models import (
-    ChatHistory,
     ChatHistoryCreate,
-    ChatHistoryShow,
     ShortMemoryCreate
 )
 from schema import (
@@ -56,7 +46,6 @@ from schema import (
     Observation,
     RequestClassification,
 )
-from util import st_status_container
 
 class Orchestrator:
     """
@@ -71,6 +60,7 @@ class Orchestrator:
         :param self: Description
         """
         self.database_manager: DatabaseManager = DatabaseManager()
+        self.operator: Operator = Operator(self.database_manager)
 
         self.gpt_120b: BaseChatModel = ChatGroq(
             model="openai/gpt-oss-120b",
@@ -85,7 +75,6 @@ class Orchestrator:
             context_schema=Context,
         )
 
-    @st_status_container("Understanding request intent")
     def intent_comprehension(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
         Docstring for intent_comprehension
@@ -98,17 +87,9 @@ class Orchestrator:
         :return: Description
         :rtype: Dict[str, Any]
         """
-        context_prompt: str = "\n\nContext information is provided below."
-
-        if runtime.context.short_memories:
-            context_prompt += "\n\nConversation history summarized by turn number:"
-
-            for num, turn in enumerate(runtime.context.short_memories):
-                context_prompt += f"\n{num + 1}. {turn.summary}"
-        else:
-            context_prompt += "\n\nThere is no conversation history."
-
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.operator.get_conversation_summary()
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
 
@@ -120,9 +101,11 @@ class Orchestrator:
         llm_output = llm.invoke(llm_input)
         serialized_output: IntentComprehension = IntentComprehension.model_validate(llm_output)
 
-        return {"intent_comprehension": serialized_output}
+        return {
+            "ui_payload": "Classifying request",
+            "intent_comprehension": serialized_output,
+        }
 
-    @st_status_container("Classifying request")
     def request_classification(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analysis_orchestration", "direct_response", "punt_response"]]:
         """
         Docstring for request_classification
@@ -138,18 +121,7 @@ class Orchestrator:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
         llm_input: Sequence = [system_message]
-
-        if state["intent_comprehension"]:
-            for turn in state["intent_comprehension"].relevant_turns:
-                params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
-
-                for chat in relevant_turn:
-                    if chat.role == "Human":
-                        llm_input += [HumanMessage(content=chat.content)]
-                    else:
-                        llm_input += [AIMessage(content=chat.content)]
-
+        llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
         llm: Runnable = self.gpt_120b.with_structured_output(
@@ -159,28 +131,35 @@ class Orchestrator:
 
         llm_output = llm.invoke(llm_input)
         serialized_output: RequestClassification = RequestClassification.model_validate(llm_output)
-        return_state: Dict[Literal["request_classification"], RequestClassification] = {"request_classification": serialized_output}
 
         match serialized_output.route:
             case "analysis_orchestration":
                 return Command(
                     goto="analysis_orchestration",
-                    update=return_state
+                    update={
+                        "ui_payload": "Determining strategy for analysis",
+                        "request_classification": serialized_output
+                    }
                 )
             case "direct_response":
                 return Command(
                     goto="direct_response",
-                    update=return_state
+                    update={
+                        "ui_payload": "Formulating response without analytical computation",
+                        "request_classification": serialized_output
+                    }
                 )
             case "punt_response":
                 return Command(
                     goto="punt_response",
-                    update=return_state
+                    update={
+                        "ui_payload": "Formulating response that request is out of business analytical domain",
+                        "request_classification": serialized_output
+                    }
                 )
             case _:
                 raise ValueError("Unknown route category")
 
-    @st_status_container("Formulating response without analytical computation")
     def direct_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
         Docstring for direct_response
@@ -196,24 +175,15 @@ class Orchestrator:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
         llm_input: Sequence = [system_message]
-
-        if state["intent_comprehension"]:
-            for turn in state["intent_comprehension"].relevant_turns:
-                params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
-
-                for chat in relevant_turn:
-                    if chat.role == "Human":
-                        llm_input += [HumanMessage(content=chat.content)]
-                    else:
-                        llm_input += [AIMessage(content=chat.content)]
-
+        llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
         llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
 
-        return {"messages": [llm_output]}
+        return {
+            "ui_payload": "Finalizing response",
+            "messages": [llm_output]
+        }
 
-    @st_status_container("Formulating response that request is outside business analytics domain")
     def punt_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
         Docstring for punt_response
@@ -231,9 +201,11 @@ class Orchestrator:
         llm_input: Sequence = [system_message] + state["messages"]
         llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
 
-        return {"messages": [llm_output]}
+        return {
+            "ui_payload": "Finalizing response",
+            "messages": [llm_output]
+        }
 
-    @st_status_container("Determining analysis strategy")
     def analysis_orchestration(self, state: State, runtime: Runtime[Context]) -> Command[Literal["data_unavailability", "data_retrieval", "computation_planning"]]:
         """
         Docstring for analysis_orchestration
@@ -246,35 +218,14 @@ class Orchestrator:
         :return: Description
         :rtype: Command[Literal['data_unavailability', 'data_retrieval', 'computation_planning']]
         """
-        context_prompt: str = "\n\nContext information is provided below."
-        context_prompt += "\n\nExternal database schema information:\n"
-        context_prompt += repr(runtime.context.external_db_info)
-
-        if state["dataframe"] is not None:
-            buffer: StringIO = StringIO()
-            state["dataframe"].info(buf=buffer, memory_usage=False)
-            context_prompt += "\n\nDataframe object representation:\n"
-            context_prompt += buffer.getvalue()
-            context_prompt += "\n\nDataframe object is extracted previously using the following SQL query:\n"
-            context_prompt += str(self.database_manager.get_last_executed_sql_query())
-        else:
-            context_prompt += "\n\nThere is no dataframe object representation."
-
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.operator.get_database_schema_and_sample_values()
+        context_prompt += self.operator.get_dataframe_schema_and_sample_values()
+        context_prompt += self.operator.get_last_saved_sql_query(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
-
-        if state["intent_comprehension"]:
-            for turn in state["intent_comprehension"].relevant_turns:
-                params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
-
-                for chat in relevant_turn:
-                    if chat.role == "Human":
-                        llm_input += [HumanMessage(content=chat.content)]
-                    else:
-                        llm_input += [AIMessage(content=chat.content)]
-
+        llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
         llm: Runnable = self.gpt_120b.with_structured_output(
@@ -284,28 +235,35 @@ class Orchestrator:
 
         llm_output = llm.invoke(llm_input)
         serialized_output: AnalysisOrchestration = AnalysisOrchestration.model_validate(llm_output)
-        return_state: Dict[Literal["analysis_orchestration"], AnalysisOrchestration] = {"analysis_orchestration": serialized_output}
 
         match serialized_output.route:
             case "data_unavailability":
                 return Command(
                     goto="data_unavailability",
-                    update=return_state
+                    update={
+                        "ui_payload": "Discovering that business data is insufficient to perform analytical computation",
+                        "analysis_orchestration": serialized_output
+                    }
                 )
             case "data_retrieval":
                 return Command(
                     goto="data_retrieval",
-                    update=return_state
+                    update={
+                        "ui_payload": "Extracting business data from external database",
+                        "analysis_orchestration": serialized_output
+                    }
                 )
             case "computation_planning":
                 return Command(
                     goto="computation_planning",
-                    update=return_state
+                    update={
+                        "ui_payload": "Creating analytical computation plan",
+                        "analysis_orchestration": serialized_output
+                    }
                 )
             case _:
                 raise ValueError("Unknown route category")
 
-    @st_status_container("Discovering that business data is unavailable to complete request")
     def data_unavailability(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
         Docstring for data_unavailability
@@ -318,32 +276,20 @@ class Orchestrator:
         :return: Description
         :rtype: Dict[str, Any]
         """
-        context_prompt: str = "\n\nContext information is provided below."
-
-        if state["analysis_orchestration"]:
-            context_prompt += f"\n\n{state["analysis_orchestration"].rationale}"
-
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.operator.get_data_unavailability_rationale(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
-
-        if state["intent_comprehension"]:
-            for turn in state["intent_comprehension"].relevant_turns:
-                params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
-
-                for chat in relevant_turn:
-                    if chat.role == "Human":
-                        llm_input += [HumanMessage(content=chat.content)]
-                    else:
-                        llm_input += [AIMessage(content=chat.content)]
-
+        llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
         llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
 
-        return {"messages": llm_output}
+        return {
+            "ui_payload": "Finalizing response",
+            "messages": [llm_output]
+        }
 
-    @st_status_container("Extracting business data from external database")
     def data_retrieval(self, state: State) -> Dict[str, Any]:
         """
         Docstring for data_retrieval
@@ -357,15 +303,14 @@ class Orchestrator:
         if state["analysis_orchestration"]:
             if state["analysis_orchestration"].sql_query:
                 sql_query: str = state["analysis_orchestration"].sql_query
-                self.database_manager.retrieve_external_data(sql_query)
+                self.database_manager.extract_external_database(sql_query)
 
-                return {"dataframe": self.database_manager.get_working_dataframe()}
+                return {"ui_payload": "Creating analytical computation plan"}
 
             raise ValueError("'analysis_orchestration' state does not contains 'sql_query' attribute when retrieving data")
         else:
             raise ValueError("'analysis_orchestration' state must not empty in 'data_retrieval' node")
 
-    @st_status_container("Planning computation steps on data")
     def computation_planning(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
         Docstring for computation_planning
@@ -378,55 +323,13 @@ class Orchestrator:
         :return: Description
         :rtype: Dict[str, Any]
         """
-        context_prompt: str = "\n\nContext information is provided below."
-
-        if state["dataframe"] is not None and state["analysis_orchestration"] is not None:
-            context_prompt += "\n\nDataframe schema and sample values in each columns:"
-            col_value_dict: Dict[str, tuple[str, Any]] = {}
-            dset_attrs: str = ""
-            df: pd.DataFrame = state["dataframe"]
-
-            for column in df.columns:
-                if is_object_dtype(df[column]):
-                    try:
-                        df[column] = pd.to_datetime(df[column])
-                    except Exception as _:
-                        continue
-
-            for column in df.columns:
-                if is_numeric_dtype(df[column]) or is_datetime64_any_dtype(df[column]):
-                    col_value_dict[column] = (str(df[column].dtype), df[column].unique()[:1])
-                else:
-                    col_value_dict[column] = (str(df[column].dtype), df[column].unique())
-
-            for col_name, values in col_value_dict.items():
-                dset_attrs += f"\n- {col_name} ({values[0]}): {list(str(value) for value in values[1])}"
-
-            context_prompt += dset_attrs
-        else:
-            raise ValueError("'dataframe' state must not be empty in 'computation_planning' node")
-
-        if state["analysis_orchestration"]:
-            context_prompt += "\n\nThe dataframe object representation above is extracted using the following SQL query:\n"
-            context_prompt += str(state["analysis_orchestration"].sql_query)
-        else:
-            raise ValueError("'analysis_orchestration' state must not be empty in 'observation' node")
-
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.operator.get_dataframe_schema_and_sample_values()
+        context_prompt += self.operator.get_last_executed_sql_query(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
-
-        if state["intent_comprehension"]:
-            for turn in state["intent_comprehension"].relevant_turns:
-                params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
-
-                for chat in relevant_turn:
-                    if chat.role == "Human":
-                        llm_input += [HumanMessage(content=chat.content)]
-                    else:
-                        llm_input += [AIMessage(content=chat.content)]
-
+        llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
         llm: Runnable = self.gpt_120b.with_structured_output(
@@ -437,9 +340,11 @@ class Orchestrator:
         llm_output = llm.invoke(llm_input)
         serialized_output: ComputationPlanning = ComputationPlanning.model_validate(llm_output)
 
-        return {"computation_planning": serialized_output}
+        return {
+            "ui_payload": "Executing analytical computation plan",
+            "computation_planning": serialized_output
+        }
 
-    @st_status_container("Executing plan")
     def sandbox_environment(self, state: State, runtime: Runtime[Context]) -> Command[Literal["observation", "self_correction"]]:
         """
         Docstring for sandbox_environment
@@ -454,7 +359,7 @@ class Orchestrator:
         """
         sandbox: Sandbox = Sandbox.create()
 
-        with open("./context/working_dataset.csv", "rb") as dataset:
+        with open(working_dataset_path, "rb") as dataset:
             sandbox.files.write('dataset.csv', dataset.read())
 
         code : str = runtime.context.sandbox_bootstrap
@@ -467,23 +372,25 @@ class Orchestrator:
 
         execution: Execution = sandbox.run_code(code)
         sandbox.kill()
-        return_state: Dict[Literal["execution"], Execution] = {"execution": execution}
 
         match execution.error is None:
             case True:
                 return Command(
                     goto="observation",
-                    update=return_state
+                    update={
+                        "ui_payload": "Observing computational execution result",
+                        "execution": execution
+                    }
                 )
             case False:
-                st.error("There's computational execution error")
-
                 return Command(
                     goto="self_correction",
-                    update=return_state
+                    update={
+                        "ui_payload": "Correcting analytical computation syntax",
+                        "execution": execution
+                    }
                 )
 
-    @st_status_container("Observing execution result")
     def observation(self, state: State, runtime: Runtime[Context]) -> Command[Literal["self_reflection", "analysis_response"]]:
         """
         Docstring for observation
@@ -496,69 +403,15 @@ class Orchestrator:
         :return: Description
         :rtype: Command[Literal['self_reflection', 'analysis_response']]
         """
-        context_prompt: str = "\n\nContext information is provided below."
-
-        if state["dataframe"] is not None:
-            context_prompt += "\n\nDataframe schema and sample values in each columns:"
-            col_value_dict: Dict[str, tuple[str, Any]] = {}
-            dset_attrs: str = ""
-            df: pd.DataFrame = state["dataframe"]
-
-            for column in df.columns:
-                if is_object_dtype(df[column]):
-                    try:
-                        df[column] = pd.to_datetime(df[column])
-                    except Exception as _:
-                        continue
-
-            for column in df.columns:
-                if is_numeric_dtype(df[column]) or is_datetime64_any_dtype(df[column]):
-                    col_value_dict[column] = (str(df[column].dtype), df[column].unique()[:1])
-                else:
-                    col_value_dict[column] = (str(df[column].dtype), df[column].unique())
-
-            for col_name, values in col_value_dict.items():
-                dset_attrs += f"\n- {col_name} ({values[0]}): {list(str(value) for value in values[1])}"
-
-            context_prompt += dset_attrs
-        else:
-            raise ValueError("'dataframe' state must not be empty in 'observation' node")
-
-        if state["analysis_orchestration"]:
-            context_prompt += "\n\nThe dataframe object representation above is extracted using the following SQL query:\n"
-            context_prompt += str(state["analysis_orchestration"].sql_query)
-        else:
-            raise ValueError("'analysis_orchestration' state must not be empty in 'observation' node")
-
-        if state["computation_planning"]:
-            context_prompt += "\n\nThe computation plan that was generated:"
-
-            for step in state["computation_planning"].steps:
-                context_prompt += f"\n{step.number}. {step.description}"
-        else:
-            raise ValueError("'computation_planning' state must not be empty in 'observation' node")
-
-        if state["execution"]:
-            context_prompt += "\n\nThe execution logs from sandbox environment:\n"
-            context_prompt += str(state["execution"].logs.stdout)
-        else:
-            raise ValueError("'execution' state must not be empty in 'observation' node")
-
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.operator.get_dataframe_schema_and_sample_values()
+        context_prompt += self.operator.get_last_executed_sql_query(state)
+        context_prompt += self.operator.get_computational_plan_list(state)
+        context_prompt += self.operator.get_execution_stdout(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
-
-        if state["intent_comprehension"]:
-            for turn in state["intent_comprehension"].relevant_turns:
-                params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
-
-                for chat in relevant_turn:
-                    if chat.role == "Human":
-                        llm_input += [HumanMessage(content=chat.content)]
-                    else:
-                        llm_input += [AIMessage(content=chat.content)]
-
+        llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
         llm: Runnable = self.gpt_120b.with_structured_output(
@@ -568,23 +421,27 @@ class Orchestrator:
 
         llm_output = llm.invoke(llm_input)
         serialized_output: Observation = Observation.model_validate(llm_output)
-        return_state: Dict[Literal["observation"], Observation] = {"observation": serialized_output}
 
         match serialized_output.status:
             case "insufficient":
                 return Command(
                     goto="self_reflection",
-                    update=return_state
+                    update={
+                        "ui_payload": "Reflecting analytical plan for better analytical result",
+                        "observation": serialized_output
+                    }
                 )
             case "sufficient":
                 return Command(
                     goto="analysis_response",
-                    update=return_state
+                    update={
+                        "ui_payload": "Formulating response based on observation result",
+                        "observation": serialized_output
+                    }
                 )
             case _:
                 raise ValueError("Unknown status value")
 
-    @st_status_container("Correcting computational syntax")
     def self_correction(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
         Docstring for self_correction
@@ -597,23 +454,10 @@ class Orchestrator:
         :return: Description
         :rtype: Dict[str, Any]
         """
-        context_prompt: str = "\n\nContext information is provided below."
-
-        if state["computation_planning"]:
-            context_prompt += "\n\nThe original computational plan:"
-
-            for step in state["computation_planning"].steps:
-                context_prompt += f"\n{step}"
-        else:
-            raise ValueError("'computation_planning' state must not be empty in 'self_correction' node")
-
-        if state["execution"] and state["execution"].error:
-            context_prompt += "\n\nThe traceback error:\n"
-            context_prompt += state["execution"].error.traceback
-        else:
-            raise ValueError("'execution' state must not be empty in 'self_correction' node")
-
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.operator.get_computational_plan_list(state)
+        context_prompt += self.operator.get_execution_error(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
 
@@ -625,9 +469,11 @@ class Orchestrator:
         llm_output = llm.invoke(llm_input)
         serialized_output: ComputationPlanning = ComputationPlanning.model_validate(llm_output)
 
-        return {"computation_planning": serialized_output}
+        return {
+            "ui_payload": "Executing analytical computation plan with corrected syntax",
+            "computation_planning": serialized_output
+        }
 
-    @st_status_container("Reflecting computational plan for better results")
     def self_reflection(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
         Docstring for self_reflection
@@ -640,23 +486,10 @@ class Orchestrator:
         :return: Description
         :rtype: Dict[str, Any]
         """
-        context_prompt: str = "\n\nContext information is provided below."
-
-        if state["computation_planning"]:
-            context_prompt += "\n\nThe original computational plan:"
-
-            for step in state["computation_planning"].steps:
-                context_prompt += f"\n{step}"
-        else:
-            raise ValueError("'computation_planning' state must not be empty in 'self_reflection' node")
-
-        if state["observation"]:
-            context_prompt += "\n\nThe observation rationale:\n"
-            context_prompt += state["observation"].rationale
-        else:
-            raise ValueError("'observation' state must not be empty in 'self_reflection' node")
-
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.operator.get_computational_plan_list(state)
+        context_prompt += self.operator.get_observation_rationale(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
 
@@ -668,9 +501,11 @@ class Orchestrator:
         llm_output = llm.invoke(llm_input)
         serialized_output: ComputationPlanning = ComputationPlanning.model_validate(llm_output)
 
-        return {"computation_planning": serialized_output}
+        return {
+            "ui_payload": "Executing refined analytical computation plan",
+            "computation_planning": serialized_output
+        }
 
-    @st_status_container("Formulating response for analysis result")
     def analysis_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
         Docstring for analysis_response
@@ -683,43 +518,24 @@ class Orchestrator:
         :return: Description
         :rtype: Dict[str, Any]
         """
-        context_prompt: str = "\n\nContext information is provided below."
-
-        if state["computation_planning"]:
-            context_prompt += "\n\nThe final computational plan:"
-
-            for step in state["computation_planning"].steps:
-                context_prompt += f"\n{step}"
-        else:
-            raise ValueError("'computation_planning' state must not be empty in 'self_reflection' node")
-
-        if state["execution"]:
-            context_prompt += "\n\nThe execution logs from sandbox environment:\n"
-            context_prompt += str(state["execution"].logs.stdout)
-        else:
-            raise ValueError("'execution' state must not be empty in 'analysis_response' node")
-
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.operator.get_database_schema_and_sample_values()
+        context_prompt += self.operator.get_dataframe_schema_and_sample_values()
+        context_prompt += self.operator.get_last_executed_sql_query(state)
+        context_prompt += self.operator.get_computational_plan_list(state)
+        context_prompt += self.operator.get_execution_stdout(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
-
-        if state["intent_comprehension"]:
-            for turn in state["intent_comprehension"].relevant_turns:
-                params: ChatHistoryShow = ChatHistoryShow(turn_num=turn)
-                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
-
-                for chat in relevant_turn:
-                    if chat.role == "Human":
-                        llm_input += [HumanMessage(content=chat.content)]
-                    else:
-                        llm_input += [AIMessage(content=chat.content)]
-
+        llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
         llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
 
-        return {"messages": [llm_output]}
+        return {
+            "ui_payload": "Finalizing response",
+            "messages": [llm_output]
+        }
 
-    @st_status_container("Finalizing response")
     def summarization(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
         Docstring for summarization
