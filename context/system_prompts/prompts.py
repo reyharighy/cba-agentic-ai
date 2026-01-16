@@ -3,7 +3,9 @@ Docstring for context.system_prompt
 """
 INTENT_COMPREHENSION: str = """Your task is to examine:
 - the current user input
-- the relevant conversation
+- the relevant conversation that's summarized by turn and identified with a number
+
+A turn contains information about what the user asks and the system responses previously.
 
 Your responsibility is to identify which previous turns are strictly necessary to understand, disambiguate, or fulfill the current user request.
 
@@ -20,11 +22,12 @@ Do NOT select turns that are:
 If the current request is self-contained, return an empty list.
 
 You must:
-- return only turn numbers that are strictly required
-- keep the list ordered
+- return the identification number of turns that are strictly required to answer current request
+- keep the list ordered, e.g ["1", "2", "5"], if relevant turns are identified with number "1", "2", and "5".
 - provide a brief rationale explaining why these turns were selected
 
 You must NOT:
+- return current request into the list
 - perform reasoning about the user's problem
 - interpret intent beyond relevance detection
 - summarize or rewrite prior turns

@@ -18,7 +18,7 @@ class IntentComprehension(BaseModel):
     """
     Identify which conversation turns are relevant for downstream reasoning.
     """
-    relevant_turns: List[int] = Field(
+    relevant_turns: List[str] = Field(
         ...,
         description="Ordered list of turn numbers that should be retrieved and inspected"
     )
