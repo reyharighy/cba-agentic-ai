@@ -14,7 +14,6 @@ from typing import (
 
 # third-party
 import pandas as pd
-from pandas.errors import EmptyDataError
 from sqlalchemy import (
     CursorResult,
     Engine,
@@ -35,6 +34,7 @@ from .config import (
     external_db_url,
     internal_db_url,
 )
+from context.datasets import working_dataset_path
 from context.models import (
     ChatHistory,
     ChatHistoryShow,
@@ -46,11 +46,6 @@ from context.models import (
 )
 
 class DatabaseManager:
-    """
-    Docstring for ContextManager
-    
-    :var Returns: Description
-    """
     def __init__(self) -> None:
         """
         Docstring for __init__
@@ -62,7 +57,7 @@ class DatabaseManager:
 
     def init_internal_database(self) -> None:
         """
-        Docstring for init_chat_history_db
+        Docstring for init_internal_database
         
         :param self: Description
         """
@@ -149,13 +144,13 @@ class DatabaseManager:
 
     def show_short_memory(self, params: ShortMemoryShow) -> Optional[ShortMemory]:
         """
-        Docstring for store_short_memory
+        Docstring for show_short_memory
         
         :param self: Description
         :param params: Description
         :type params: ShortMemoryShow
         :return: Description
-        :rtype: Optional[ShortMemory]
+        :rtype: ShortMemory | None
         """
         with self.internal.begin() as connection:
             result: CursorResult = connection.execute(
@@ -237,22 +232,9 @@ class DatabaseManager:
             "columns": table_columns
         }
 
-    def get_working_dataframe(self) -> Optional[pd.DataFrame]:
+    def show_last_saved_sql_query(self) -> Optional[str]:
         """
-        Docstring for get_working_dataframe
-        
-        :param self: Description
-        :return: Description
-        :rtype: DataFrame | None
-        """
-        try:
-            return pd.read_csv("./context/working_dataset.csv")
-        except EmptyDataError as _:
-            return None
-
-    def get_last_executed_sql_query(self) -> Optional[str]:
-        """
-        Docstring for get_last_executed_sql_query
+        Docstring for show_last_saved_sql_query
         
         :param self: Description
         :return: Description
@@ -271,7 +253,7 @@ class DatabaseManager:
 
             return mappings.pop().sql_query if mappings else None
 
-    def retrieve_external_data(self, statement: str) -> None:
+    def extract_external_database(self, statement: str) -> None:
         """
         Docstring for retrieve_external_data
         
@@ -279,7 +261,7 @@ class DatabaseManager:
         :param statement: Description
         :type statement: str
         """
-        output_path: Path = Path("./context/working_dataset.csv")
+        output_path: Path = Path(working_dataset_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         with self.external.begin() as connection:
