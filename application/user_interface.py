@@ -13,6 +13,7 @@ from typing import (
 
 # third-party
 import streamlit as st
+from streamlit.delta_generator import DeltaGenerator
 from langchain_core.messages import HumanMessage
 from langgraph.graph.state import CompiledStateGraph
 
@@ -31,11 +32,6 @@ from graph import (
 )
 
 class UserInterface:
-    """
-    Docstring for UserInterface
-    
-    :var Returns: Description
-    """
     def __init__(self) -> None:
         """
         Docstring for __init__
@@ -51,14 +47,14 @@ class UserInterface:
         
         :param self: Description
         """
-        self._init_session_state_and_page_config()
+        self._init_session_and_config()
         self._display_chat_history()
         self._process_chat_input()
         self._show_toast_message()
 
-    def _init_session_state_and_page_config(self) -> None:
+    def _init_session_and_config(self) -> None:
         """
-        Docstring for init_session
+        Docstring for _init_session_and_config
         
         :param self: Description
         """
@@ -79,12 +75,12 @@ class UserInterface:
 
     def _display_chat_history(self) -> None:
         """
-        Docstring for display_chat_history
+        Docstring for _display_chat_history
         
         :param self: Description
         """
         chat_history: List[ChatHistory] = self.database_manager.index_chat_history()
-        self.session_memory.turn_num = len(chat_history)
+        self.session_memory.turn_num = max(chat.turn_num for chat in chat_history) if chat_history else 0
 
         if self.session_memory.turn_num > 0:
             chat_turn_slicer: List[Union[ChatHistory, str]] = []
@@ -98,19 +94,13 @@ class UserInterface:
 
     def _process_chat_input(self) -> None:
         """
-        Docstring for process_chat_input
+        Docstring for _process_chat_input
         
         :param self: Description
         """
         if chat_input := st.chat_input("Chat with AI"):
             self.session_memory.chat_input = chat_input
-
-            try:
-                self._render_chat_turn_block(on_processing_request=True)
-            except Exception as e:
-                st.error(e)
-                st.session_state["error_toast"] = True
-
+            self._render_chat_turn_block(on_processing_request=True)
             st.rerun()
 
     def _render_chat_turn_block(self, on_processing_request: bool = False, chat_turn: List[Union[ChatHistory, str]] = []) -> None:
@@ -148,8 +138,8 @@ class UserInterface:
         Docstring for _render_turn_element
         
         :param self: Description
-        :param element_type: Description
-        :type element_type: Literal["input", "output"]
+        :param input_type: Description
+        :type input_type: bool
         :param on_processing_request: Description
         :type on_processing_request: bool
         :param turn_element: Description
@@ -166,7 +156,7 @@ class UserInterface:
 
     def _graph_invocation(self) -> None:
         """
-        Docstring for graph_invocation
+        Docstring for _graph_invocation
         
         :param self: Description
         """
@@ -174,9 +164,9 @@ class UserInterface:
 
         graph_input: State = State(
             messages=[HumanMessage(self.session_memory.chat_input)],
+            ui_payload=None,
             intent_comprehension=None,
             request_classification=None,
-            dataframe=self.database_manager.get_working_dataframe(),
             analysis_orchestration=None,
             computation_planning=None,
             execution=None,
@@ -187,43 +177,75 @@ class UserInterface:
         graph_context: Context = Context(
             turn_num=self.session_memory.turn_num,
             prompts_set=load_prompts_set(),
-            short_memories=self.database_manager.index_short_memory(),
-            external_db_info=self.database_manager.inspect_external_database(),
             sandbox_bootstrap=load_sandbox_bootstrap()
         )
 
-        graph_output: Dict = graph.invoke(
-            input=graph_input,
-            context=graph_context,
-        )
+        status_box: DeltaGenerator = st.status("Understanding request intent", expanded=True)
+        pass_through_nodes: List[str] = ["data_retrieval", "sandbox_environment"]
 
-        self.session_memory.chat_output = graph_output["messages"][-1].content
+        try:
+            for chunk in graph.stream(input=graph_input, context=graph_context, stream_mode="updates"):
+                if not isinstance(chunk, Dict):
+                    continue
 
-        if graph_output["summarization"]:
-            st.session_state["success_toast"] = True
-        else:
-            st.session_state["punt_toast"] = True
-            st.session_state["punt_response"].append(self.session_memory.chat_input)
-            st.session_state["punt_response"].append(self.session_memory.chat_output)
+                node_name, node_state = next(iter(chunk.items()))
 
-        st.write_stream(self._stream_generator)
+                if not node_state or not isinstance(node_state, Dict):
+                    continue
+
+                if ui_payload := node_state.get("ui_payload"):
+                    status_box.update(label=ui_payload)
+
+                if node_name in pass_through_nodes:
+                        continue
+
+                try:
+                    if node_name == "self_correction" or node_name == "self_reflection":
+                        self.session_memory.thinking = node_state["computation_planning"].rationale
+                    else:
+                        self.session_memory.thinking = node_state[node_name].rationale
+
+                    status_box.write(self._stream_generator)
+                except Exception as _:
+                    if node_name != "summarization":
+                        self.session_memory.chat_output = node_state["messages"][-1].content
+                        st.write(self._stream_generator)
+
+                    if node_name == "summarization":
+                        st.session_state["success_toast"] = True
+                    elif node_name == "punt_response":
+                        st.session_state["punt_toast"] = True
+                        st.session_state["punt_response"].append(self.session_memory.chat_input)
+                        st.session_state["punt_response"].append(self.session_memory.chat_output)
+        except Exception as e:
+            st.session_state["error_toast"] = True
+            st.error(f"Graph execution failed: {e}")
+        
+        status_box.update(state="complete")
 
     def _stream_generator(self) -> Generator:
         """
-        Docstring for stream_generator
+        Docstring for _stream_generator
         
         :param self: Description
         :return: Description
         :rtype: Generator[Any, None, None]
         """
-        if self.session_memory.chat_output:
+        if self.session_memory.thinking:
+            for word in str(self.session_memory.thinking).split(" "):
+                yield word + " "
+                sleep(0.01)
+
+            self.session_memory.thinking = None
+
+        elif self.session_memory.chat_output:
             for word in str(self.session_memory.chat_output).split(" "):
                 yield word + " "
-                sleep(0.02)
+                sleep(0.01)
 
     def _show_toast_message(self) -> None:
         """
-        Docstring for show_toast_message
+        Docstring for _show_toast_message
         
         :param self: Description
         """
@@ -236,8 +258,9 @@ class UserInterface:
             )
 
         if st.session_state["punt_toast"]:
-            st.session_state["punt_toast"] = False
             self._render_chat_turn_block(chat_turn=st.session_state["punt_response"])
+            st.session_state["punt_toast"] = False
+            st.session_state["punt_response"] = []
 
             st.toast(
                 body="###### **Your request is out of business analytics domain. This chat turn will not be persisted.**", 
