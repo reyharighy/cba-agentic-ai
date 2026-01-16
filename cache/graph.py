@@ -8,6 +8,8 @@ from typing import Dict
 from langgraph.graph.state import CompiledStateGraph
 
 # internal
+from .context import load_database_manager
+from context.database import DatabaseManager
 from context.system_prompts import (
     ANALYSIS_RESPONSE,
     ANALYSIS_ORCHESTRATION,
@@ -37,7 +39,8 @@ def load_graph_orchestrator() -> CompiledStateGraph[State, Context]:
     :return: Description
     :rtype: CompiledStateGraph[State, Context, State, State]
     """
-    orchestrator = Orchestrator()
+    database_manager: DatabaseManager = load_database_manager()
+    orchestrator = Orchestrator(database_manager)
 
     return orchestrator.build_graph()
 

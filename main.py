@@ -3,14 +3,16 @@ Docstring for main
 """
 # internal
 from application import UserInterface
-from cache import cold_start
+from context.database import DatabaseManager
+from cache import cold_start, load_database_manager
 
 def main() -> None:
     """
     Docstring for main
     """
     cold_start()
-    app: UserInterface = UserInterface()
+    database_manager: DatabaseManager = load_database_manager()
+    app: UserInterface = UserInterface(database_manager)
     app.run()
 
 if __name__ == "__main__":

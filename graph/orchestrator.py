@@ -53,14 +53,14 @@ class Orchestrator:
     
     :var Returns: Description
     """
-    def __init__(self) -> None:
+    def __init__(self, database_manager: DatabaseManager) -> None:
         """
         Docstring for __init__
         
         :param self: Description
         """
-        self.database_manager: DatabaseManager = DatabaseManager()
-        self.operator: Operator = Operator(self.database_manager)
+        self.database_manager: DatabaseManager = database_manager
+        self.operator: Operator = Operator(database_manager)
 
         self.gpt_120b: BaseChatModel = ChatGroq(
             model="openai/gpt-oss-120b",

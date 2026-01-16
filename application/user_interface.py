@@ -32,14 +32,14 @@ from graph import (
 )
 
 class UserInterface:
-    def __init__(self) -> None:
+    def __init__(self, database_manager: DatabaseManager) -> None:
         """
         Docstring for __init__
         
         :param self: Description
         """
         self.session_memory: SessionMemory = SessionMemory()
-        self.database_manager: DatabaseManager = DatabaseManager()
+        self.database_manager: DatabaseManager = database_manager
 
     def run(self) -> None:
         """
