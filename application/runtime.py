@@ -13,3 +13,4 @@ class SessionMemory:
     turn_num: int = 0
     chat_input: Optional[str] = None
     chat_output: Optional[str] = None
+    thinking: Optional[str] = None
