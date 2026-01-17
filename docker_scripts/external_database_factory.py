@@ -1,4 +1,5 @@
 # standard
+import os
 from typing import (
     Any,
     Dict,
@@ -28,6 +29,10 @@ from uuid import uuid4
 from context.database.config import external_db_url
 
 def main() -> None:
+    if os.getenv("ENABLE_EXTERNAL_DB_SEEDING", "true").lower() != "true":
+        print("External database seeding is disabled.")
+        return
+
     engine: Engine = create_engine(external_db_url)
     metadata: MetaData = MetaData()
     table: Table = Table(
@@ -63,7 +68,7 @@ def main() -> None:
     with engine.begin() as connection:
         connection.execute(insert(table), records)
 
-    print("Database is successfully populated.")
+    print("External database is successfully populated with synthetic data.")
 
 if __name__ == "__main__":
     main()
