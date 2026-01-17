@@ -1,5 +1,10 @@
 """
-Docstring for schema.llm_output_schema
+Output schemas for LLM-driven node execution.
+
+This module defines structured output formats that language models
+must conform to when producing results for specific system nodes.
+These schemas act as strict interfaces between probabilistic model
+generation and deterministic system logic.
 """
 # standard
 from typing import (

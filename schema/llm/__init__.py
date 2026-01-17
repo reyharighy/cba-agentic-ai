@@ -1,7 +1,11 @@
 """
-Docstring for schema
+Schemas defining structured contracts.
+
+This package contains schema definitions that constrain and validate
+the outputs produced by language models during node execution,
+ensuring predictable and machine-interpretable results.
 """
-from .llm_output import (
+from .output import (
     AnalysisOrchestration,
     ComputationPlanning,
     IntentComprehension,
