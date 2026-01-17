@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# CONVERSATIONAL BUSINESS ANALYTICS (Agentic)
+# CONVERSATIONAL BUSINESS ANALYTICS
 
 <em>Agentic AI for Interactive Business Analytics & Reasoning</em>
 
@@ -24,6 +24,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Graph Diagram](#graph-diagram)
 - [Design Philosophy](#design-philosophy)
 - [Architecture](#architecture)
 - [Features](#features)
@@ -48,6 +49,85 @@ The system allows users to:
 - and present results interactively via a Streamlit UI.
 
 This project is designed as a **learning, research, and prototyping platform**, not a finished BI product.
+
+## Graph Diagram
+
+<div align="center">
+  <img src="graph.png" width="75%" />
+</div>
+
+- ### `intent_comprehension`
+
+  Analyzes the user’s message to understand what the user is trying to achieve at a semantic level. Produces a structured representation of intent that guides downstream routing and reasoning.
+
+- ### `request_classification`
+
+  Classifies the request into one of several high-level execution paths:
+
+  - analytical workflow,
+  - direct conversational response,
+  - or out-of-domain request.
+
+  This node determines whether the system should think, compute, or simply respond.
+
+- ### `analysis_orchestration`
+
+  Determines the analytical strategy required to answer the request. Decides whether:
+
+  - existing data is sufficient,
+  - external data must be retrieved,
+  - or analytical computation can begin immediately.
+
+  This node acts as the control tower for analytical execution.
+
+- ### `data_retrieval`
+
+  Executes data extraction from an external database when required. Runs structured queries, persists the retrieved data into the working dataset, and prepares it for computation.
+
+- ### `data_unavailability`
+
+  Handles cases where required business data does not exist or is insufficient. Generates an explanatory response to the user instead of forcing incomplete or misleading analysis.
+
+- ### `computation_planning`
+
+  Generates a step-by-step analytical computation plan in executable Python. Each step is explicitly defined to ensure traceability, debuggability, and iterative refinement.
+
+- ### `sandbox_environment`
+
+  Executes the planned computation in an isolated sandbox environment. Loads the working dataset, runs the generated code safely, and captures execution results or errors.
+
+- ### `observation`
+
+  Evaluates the outcome of the sandbox execution. Determines whether the result is:
+
+  - sufficient to answer the question, or
+  - incomplete and requiring refinement.
+
+  This is where the system checks its own work.
+
+- ### `self_correction`
+
+  Triggered when execution fails due to errors (e.g., syntax or runtime issues). Regenerates a corrected computation plan and retries execution without user intervention.
+
+- ### `self_reflection`
+
+  Triggered when execution succeeds but the result is analytically insufficient. Refines the analytical plan to improve result quality, depth, or correctness.
+
+- ### `analysis_response`
+
+  Formulates a final, user-facing response based on validated analytical results. Integrates computation output, contextual data, and natural language explanation.
+
+- ### `direct_response`
+
+  Generates an immediate response without analytical computation. Used for conversational, explanatory, or low-complexity requests.
+
+- ### `punt_response`
+
+  Handles requests that fall outside the supported analytical or business domain. Politely declines while maintaining conversational continuity.
+
+- ### `summarization`
+
+  Persists conversational memory and analytical context. Stores chat history, summaries, and relevant metadata to support future turns and continuity.
 
 ## Design Philosophy
 
