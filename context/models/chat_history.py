@@ -1,5 +1,8 @@
 """
-Docstring for context.chat_history
+Chat history data models.
+
+This module defines representations of conversational turns
+that are persisted as part of the system's interaction history.
 """
 # standard
 from datetime import datetime
@@ -13,7 +16,9 @@ from pydantic import (
 
 class ChatHistory(BaseModel):
     """
-    Docstring for ChatHistory
+    Representation of a single conversational turn.
+
+    This model captures one exchange within a conversation.
     """
     turn_num: int = Field(ge=1)
     role: Literal["Human", "AI"]
@@ -22,7 +27,10 @@ class ChatHistory(BaseModel):
 
 class ChatHistoryCreate(BaseModel):
     """
-    Docstring for ChatHistoryCreate
+    Input model for creating chat history records.
+
+    This model represents the required information needed
+    to construct a persisted chat history entry.
     """
     turn_num: int
     role: Literal["Human", "AI"]
@@ -30,11 +38,10 @@ class ChatHistoryCreate(BaseModel):
 
     def __call__(self) -> ChatHistory:
         """
-        Docstring for __call__
-        
-        :param self: Description
-        :return: Description
-        :rtype: Any
+        Create a chat history instance from the input data.
+
+        This method converts the creation model into
+        its corresponding persisted representation.
         """
         return ChatHistory(
             turn_num=self.turn_num,
@@ -44,6 +51,9 @@ class ChatHistoryCreate(BaseModel):
 
 class ChatHistoryShow(BaseModel):
     """
-    Docstring for ShortMemoryShow
+    Minimal view model for chat history lookup.
+
+    This model represents the identifier used to
+    reference or retrieve a specific conversation turn.
     """
     turn_num: int

@@ -1,5 +1,9 @@
 """
-Docstring for context.db_config
+Database configuration module.
+
+This module is responsible for resolving database connection settings
+from the execution environment and exposing database URLs required
+by the application.
 """
 # standard
 import os

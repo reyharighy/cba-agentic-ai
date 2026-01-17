@@ -1,5 +1,8 @@
 """
-Docstring for context.table
+Database table definitions for internal context storage.
+
+This module defines table schemas used to persist
+contextual memory data within the system.
 """
 # standard
 from datetime import datetime

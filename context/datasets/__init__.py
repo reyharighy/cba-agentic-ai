@@ -1,5 +1,8 @@
 """
-Docstring for context.datasets
+Path configuration for working datasets.
+
+This module provides a reference to the location where
+datasets used during application execution are stored.
 """
 import os
 

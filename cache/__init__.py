@@ -1,5 +1,8 @@
 """
-Docstring for cache
+Application cache layer.
+
+This package defines cached entry points for application-wide resources
+that are initialized once and reused across the system lifecycle.
 """
 # third-party
 from dotenv import load_dotenv
@@ -16,7 +19,10 @@ from util import st_cache
 @st_cache("Setting up application data and resources", "data")
 def cold_start() -> None:
     """
-    Docstring for cold_start
+    Initialize application-level resources.
+
+    This function prepares shared resources required by the application
+    before interactive execution begins.
     """
     load_dotenv()
     load_database_manager()

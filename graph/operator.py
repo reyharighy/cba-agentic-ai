@@ -1,4 +1,9 @@
+"""
+Operational utilities for graph nodes.
 
+This module provides helper functions used by graph nodes to retrieve,
+transform, and assemble contextual information.
+"""
 # standard
 import sys
 from typing import (
@@ -32,26 +37,18 @@ from context.models import (
 )
 
 class Operator:
-    """
-    Docstring for ContextManager
-    """
     def __init__(self, database_manager: DatabaseManager) -> None:
         """
-        Docstring for __init__
-        
-        :param self: Description
+        Initialize the operator with access to persistent storage.
         """
         self.database_manager: DatabaseManager = database_manager
 
     def get_conversation_summary(self) -> str:
         """
-        Docstring for get_conversation_summary
-        
-        :param self: Description
-        :param database_manager: Description
-        :type database_manager: DatabaseManager
-        :return: Description
-        :rtype: str
+        Provide a summarized representation of prior conversation turns.
+
+        The summary is derived from stored short-term memory and is intended
+        to supply historical context for downstream reasoning steps.
         """
         short_memories: List[ShortMemory] = self.database_manager.index_short_memory()
 
@@ -67,15 +64,10 @@ class Operator:
 
     def get_relevant_conversation(self, state: State) -> Sequence:
         """
-        Docstring for relevant_chat_turn
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param database_manager: Description
-        :type database_manager: DatabaseManager
-        :return: Description
-        :rtype: Sequence[Any]
+        Retrieve message history relevant to the current request.
+
+        This method reconstructs selected conversation turns based on intent
+        analysis results, preserving speaker roles for accurate LLM context.
         """
         llm_input: Sequence = []
 
@@ -94,13 +86,10 @@ class Operator:
 
     def get_database_schema_and_sample_values(self) -> str:
         """
-        Docstring for get_database_schema_and_sample_values
-        
-        :param self: Description
-        :param database_manager: Description
-        :type database_manager: DatabaseManager
-        :return: Description
-        :rtype: str
+        Expose external database schema information.
+
+        This context is used to inform analytical planning and query generation
+        by describing available tables, columns, and structural metadata.
         """
         context_prompt: str = "\n\nExternal database schema information:\n"
         context_prompt += repr(self.database_manager.inspect_external_database())
@@ -109,11 +98,11 @@ class Operator:
 
     def get_dataframe_schema_and_sample_values(self) -> str:
         """
-        Docstring for get_dataframe_schema_and_sample_values
-        
-        :param self: Description
-        :return: Description
-        :rtype: str
+        Describe the structure and sample values of the working dataset.
+
+        The method inspects the dataset loaded into the analytical environment
+        and summarizes column types along with representative values to guide
+        analytical reasoning.
         """
         try:
             context_prompt: str = "\n\nDataframe schema and sample values in each columns:"
@@ -145,15 +134,10 @@ class Operator:
 
     def get_last_saved_sql_query(self, state: State) -> str:
         """
-        Docstring for get_last_saved_sql_query
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param database_manager: Description
-        :type database_manager: DatabaseManager
-        :return: Description
-        :rtype: str
+        Retrieve the most recently persisted SQL query.
+
+        This information provides historical context for analytical continuity,
+        especially when subsequent reasoning depends on prior data extraction.
         """
         if sql_query := self.database_manager.show_last_saved_sql_query():
             context_prompt: str = "\n\nThe dataframe object representation above is extracted using the following SQL query:\n"
@@ -165,13 +149,10 @@ class Operator:
 
     def get_data_unavailability_rationale(self, state: State) -> str:
         """
-        Docstring for get_data_unavailability_rationale
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :return: Description
-        :rtype: str
+        Explain why required analytical data is unavailable.
+
+        This rationale is produced during analysis orchestration and is used
+        to justify alternative response paths when data constraints exist.
         """
         if state["analysis_orchestration"]:
             context_prompt: str = "\n\nThe rationale of why required data does not exist in external database:"
@@ -183,13 +164,9 @@ class Operator:
 
     def get_last_executed_sql_query(self, state: State) -> str:
         """
-        Docstring for get_last_executed_sql_query
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :return: Description
-        :rtype: str
+        Provide the SQL query used in the most recent data extraction.
+
+        This context links analytical results back to their data provenance.
         """
         if state["analysis_orchestration"]:
             context_prompt: str = "\n\nThe dataframe object representation above is extracted using the following SQL query:\n"
@@ -201,13 +178,10 @@ class Operator:
 
     def get_computational_plan_list(self, state: State) -> str:
         """
-        Docstring for get_computational_plan_list
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :return: Description
-        :rtype: str
+        List the analytical computation steps that were generated.
+
+        The output represents the structured plan used to guide sandbox
+        execution and subsequent observation.
         """
         if state["computation_planning"]:
             context_prompt: str = "\n\nThe computation plan that was generated:"
@@ -221,13 +195,10 @@ class Operator:
 
     def get_execution_stdout(self, state: State) -> str:
         """
-        Docstring for get_execution_stdout
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :return: Description
-        :rtype: str
+        Retrieve standard output produced by sandbox execution.
+
+        This information reflects the observable results of analytical
+        computations and is used during result evaluation.
         """
         if state["execution"]:
             context_prompt: str = "\n\nThe execution logs from sandbox environment:\n"
@@ -239,13 +210,10 @@ class Operator:
 
     def get_execution_error(self, state: State) -> str:
         """
-        Docstring for get_execution_error
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :return: Description
-        :rtype: str
+        Retrieve execution error details from the sandbox environment.
+
+        The returned traceback supports error diagnosis and corrective
+        planning during self-correction stages.
         """
         if state["execution"] and state["execution"].error:
             context_prompt: str = "\n\nThe traceback error:\n"
@@ -257,13 +225,10 @@ class Operator:
 
     def get_observation_rationale(self, state: State) -> str:
         """
-        Docstring for get_observation_rationale
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :return: Description
-        :rtype: str
+        Retrieve the rationale produced during result observation.
+
+        This explanation is used to determine whether analytical outcomes
+        are sufficient or require further refinement.
         """
         if state["observation"]:
             context_prompt: str = "\n\nThe observation rationale:\n"

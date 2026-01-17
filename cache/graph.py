@@ -1,5 +1,8 @@
 """
-Docstring for cache.graph
+Cache utilities for agentic graph resources.
+
+This module provides cached access to graph-related components
+used during agent execution.
 """
 # standard
 from typing import Dict
@@ -34,10 +37,10 @@ from util import st_cache
 @st_cache("Loading graph", "resource")
 def load_graph_orchestrator() -> CompiledStateGraph[State, Context]:
     """
-    Docstring for load_graph_orchestrator
-    
-    :return: Description
-    :rtype: CompiledStateGraph[State, Context, State, State]
+    Load the agentic graph orchestrator.
+
+    This function returns a compiled graph structure used to
+    coordinate agent behavior.
     """
     database_manager: DatabaseManager = load_database_manager()
     orchestrator = Orchestrator(database_manager)
@@ -47,10 +50,10 @@ def load_graph_orchestrator() -> CompiledStateGraph[State, Context]:
 @st_cache("Loading prompts for graph context", "data")
 def load_prompts_set() -> Dict[str, str]:
     """
-    Docstring for load_prompts_set
-    
-    :return: Description
-    :rtype: Dict[str, str]
+    Load system prompt definitions.
+
+    This function provides access to prompt content used
+    within the agentic system.
     """
     return {
         "analysis_response": ANALYSIS_RESPONSE,
@@ -70,10 +73,10 @@ def load_prompts_set() -> Dict[str, str]:
 @st_cache("Loading bootsrap code for sandbox environment", "data")
 def load_sandbox_bootstrap() -> str:
     """
-    Docstring for load_sandbox_bootstrap
-    
-    :return: Description
-    :rtype: str
+    Load sandbox bootstrap code.
+
+    This function provides initialization code for the
+    sandboxed execution environment.
     """
     bootstrap_code: str = ""
     bootstrap_code += "import pandas as pd\n"

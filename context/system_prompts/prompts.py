@@ -1,5 +1,10 @@
 """
-Docstring for context.system_prompt
+System prompt definitions.
+
+This module contains declarative prompt templates that guide
+the behavior of individual nodes during graph-based execution.
+Each prompt represents an explicit responsibility boundary
+within the overall analytical workflow.
 """
 INTENT_COMPREHENSION: str = """Your task is to examine:
 - the current user input

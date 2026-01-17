@@ -1,5 +1,8 @@
 """
-Docstring for context.short_memory
+Short-term memory data models.
+
+This module defines representations of condensed contextual
+information derived from conversational interactions.
 """
 # standard
 from datetime import datetime
@@ -13,7 +16,10 @@ from pydantic import (
 
 class ShortMemory(BaseModel):
     """
-    Docstring for ShortMemory
+    Representation of a short-term contextual memory entry.
+
+    This model stores summarized information associated
+    with a specific point in a conversation.
     """
     turn_num: int = Field(ge=1)
     summary: str = Field(min_length=1)
@@ -22,7 +28,10 @@ class ShortMemory(BaseModel):
 
 class ShortMemoryCreate(BaseModel):
     """
-    Docstring for ShortMemoryCreate
+    Input model for creating short memory entries.
+
+    This model represents the data required to construct
+    a short-term memory record.
     """
     turn_num: int
     summary: str
@@ -30,11 +39,10 @@ class ShortMemoryCreate(BaseModel):
 
     def __call__(self) -> ShortMemory:
         """
-        Docstring for __call__
-        
-        :param self: Description
-        :return: Description
-        :rtype: Any
+        Create a short memory instance from the input data.
+
+        This method converts the creation model into
+        its corresponding persisted representation.
         """
         return ShortMemory(
             turn_num=self.turn_num,
@@ -44,6 +52,9 @@ class ShortMemoryCreate(BaseModel):
 
 class ShortMemoryShow(BaseModel):
     """
-    Docstring for ShortMemoryShow
+    Minimal view model for short memory lookup.
+
+    This model represents the identifier used to
+    reference or retrieve a short-term memory entry.
     """
     turn_num: int

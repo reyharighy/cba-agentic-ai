@@ -1,5 +1,9 @@
 """
-Docstring for context.system_prompts
+System prompt registry.
+
+This package centralizes all system-level prompts used during
+graph execution, providing a dedicated and inspectable location
+for prompt definitions across different orchestration nodes.
 """
 from .prompts import (
     ANALYSIS_RESPONSE,

@@ -1,5 +1,9 @@
 """
-Docstring for context.database
+Database context for the application.
+
+This package defines the public interface for database-related concerns,
+including database configuration and the database manager abstraction
+used throughout the system.
 """
 from .config import (
     internal_db_url,

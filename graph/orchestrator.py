@@ -1,5 +1,11 @@
 """
-Docstring for graph.orchestrator
+Execution coordination layer for the graph-based workflow.
+
+This module defines graph nodes that coordinate intent understanding,
+routing decisions, analytical planning, sandboxed computation,
+self-correction, and response synthesis. Each public method represents
+a LangGraph node responsible for invoking language models, updating
+execution state, or directing control flow.
 """
 # standard
 import sys
@@ -39,7 +45,7 @@ from context.models import (
     ChatHistoryCreate,
     ShortMemoryCreate
 )
-from schema import (
+from schema.llm import (
     AnalysisOrchestration,
     ComputationPlanning,
     IntentComprehension,
@@ -48,16 +54,9 @@ from schema import (
 )
 
 class Orchestrator:
-    """
-    Docstring for Orchestrator
-    
-    :var Returns: Description
-    """
     def __init__(self, database_manager: DatabaseManager) -> None:
         """
-        Docstring for __init__
-        
-        :param self: Description
+        Initialize the orchestrator with a graph definition.
         """
         self.database_manager: DatabaseManager = database_manager
         self.operator: Operator = Operator(database_manager)
@@ -77,15 +76,11 @@ class Orchestrator:
 
     def intent_comprehension(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
-        Docstring for intent_comprehension
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Dict[str, Any]
+        Infer the user's underlying intent from the current conversation.
+
+        This node analyzes the incoming user message in the context of
+        prior conversation summaries to determine the user's analytical
+        objective and intent representation.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
@@ -108,15 +103,11 @@ class Orchestrator:
 
     def request_classification(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analysis_orchestration", "direct_response", "punt_response"]]:
         """
-        Docstring for request_classification
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Command[Literal['analysis_orchestration', 'direct_response', 'punt_response']]
+        Classify the request and route execution to the appropriate response path.
+
+        This node determines whether the request requires analytical
+        computation, can be answered directly, or falls outside the
+        supported analytical domain.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
@@ -162,15 +153,10 @@ class Orchestrator:
 
     def direct_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
-        Docstring for direct_response
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Dict[str, Any]
+        Generate a direct natural language response without analytical computation.
+
+        This node is used when the request can be answered purely through
+        conversational reasoning without data retrieval or computation.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
@@ -186,15 +172,10 @@ class Orchestrator:
 
     def punt_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
-        Docstring for punt_response
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Dict[str, Any]
+        Respond to requests that fall outside the analytical business domain.
+
+        This node produces a polite or explanatory response indicating
+        that the request cannot be handled by the analytical system.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
@@ -208,15 +189,11 @@ class Orchestrator:
 
     def analysis_orchestration(self, state: State, runtime: Runtime[Context]) -> Command[Literal["data_unavailability", "data_retrieval", "computation_planning"]]:
         """
-        Docstring for analysis_orchestration
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Command[Literal['data_unavailability', 'data_retrieval', 'computation_planning']]
+        Determine the analytical strategy required to fulfill the request.
+
+        This node decides whether sufficient data exists, whether external
+        data retrieval is required, or whether the system can proceed
+        directly to computational planning.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
@@ -266,15 +243,10 @@ class Orchestrator:
 
     def data_unavailability(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
-        Docstring for data_unavailability
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Dict[str, Any]
+        Generate a response explaining insufficient data availability.
+
+        This node is executed when the system determines that required
+        business data is unavailable for analytical computation.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
@@ -292,13 +264,10 @@ class Orchestrator:
 
     def data_retrieval(self, state: State) -> Dict[str, Any]:
         """
-        Docstring for data_retrieval
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :return: Description
-        :rtype: Dict[str, Any]
+        Retrieve external business data required for analysis.
+
+        This node executes database extraction based on a generated SQL
+        query and prepares the system for subsequent computational planning.
         """
         if state["analysis_orchestration"]:
             if state["analysis_orchestration"].sql_query:
@@ -313,15 +282,10 @@ class Orchestrator:
 
     def computation_planning(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
-        Docstring for computation_planning
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Dict[str, Any]
+        Generate a structured analytical computation plan.
+
+        This node produces an ordered set of computational steps that
+        will later be executed in a sandboxed environment.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
@@ -347,15 +311,10 @@ class Orchestrator:
 
     def sandbox_environment(self, state: State, runtime: Runtime[Context]) -> Command[Literal["observation", "self_correction"]]:
         """
-        Docstring for sandbox_environment
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Command[Literal['observation', 'self_correction']]
+        Execute the analytical computation plan in an isolated sandbox.
+
+        This node runs generated code against prepared datasets and
+        determines whether execution succeeded or requires correction.
         """
         sandbox: Sandbox = Sandbox.create()
 
@@ -393,15 +352,10 @@ class Orchestrator:
 
     def observation(self, state: State, runtime: Runtime[Context]) -> Command[Literal["self_reflection", "analysis_response"]]:
         """
-        Docstring for observation
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Command[Literal['self_reflection', 'analysis_response']]
+        Evaluate the results of computational execution.
+
+        This node assesses whether the analytical output sufficiently
+        answers the original request or requires further refinement.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
@@ -444,15 +398,10 @@ class Orchestrator:
 
     def self_correction(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
-        Docstring for self_correction
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Dict[str, Any]
+        Correct computational errors encountered during execution.
+
+        This node regenerates a corrected computation plan based on
+        execution errors observed in the sandbox environment.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
@@ -476,15 +425,10 @@ class Orchestrator:
 
     def self_reflection(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
-        Docstring for self_reflection
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Dict[str, Any]
+        Refine the analytical plan based on insufficient results.
+
+        This node revises the computation plan when execution completes
+        successfully but does not yield sufficient analytical insight.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
@@ -508,15 +452,10 @@ class Orchestrator:
 
     def analysis_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
-        Docstring for analysis_response
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Dict[str, Any]
+        Generate a final response based on analytical results.
+
+        This node synthesizes computational outputs, observations, and
+        contextual information into a coherent natural language response.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
@@ -538,15 +477,10 @@ class Orchestrator:
 
     def summarization(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         """
-        Docstring for summarization
-        
-        :param self: Description
-        :param state: Description
-        :type state: State
-        :param runtime: Description
-        :type runtime: Runtime[Context]
-        :return: Description
-        :rtype: Dict[str, Any]
+        Persist conversation history and short-term analytical memory.
+
+        This node summarizes the interaction, stores chat history and
+        analytical context, and prepares the system for the next turn.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
@@ -583,11 +517,10 @@ class Orchestrator:
 
     def build_graph(self) -> CompiledStateGraph[State, Context]:
         """
-        Docstring for build_graph
-        
-        :param self: Description
-        :return: Description
-        :rtype: CompiledStateGraph[State, Context, State, State]
+        Construct and compile the analytical execution graph.
+
+        This method defines all nodes and edges, producing a compiled
+        LangGraph state machine ready for execution.
         """
         self.graph_builder.add_node("intent_comprehension", self.intent_comprehension)
         self.graph_builder.add_node("request_classification", self.request_classification)

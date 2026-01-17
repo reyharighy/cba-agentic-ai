@@ -1,5 +1,9 @@
 """
-Docstring for application.user_interface
+Streamlit-based user interface implementation.
+
+This module defines the primary UI layer responsible for rendering chat
+interactions, streaming graph execution output, and coordinating user input
+with the orchestration graph.
 """
 # standard
 from time import sleep
@@ -34,18 +38,16 @@ from graph import (
 class UserInterface:
     def __init__(self, database_manager: DatabaseManager) -> None:
         """
-        Docstring for __init__
-        
-        :param self: Description
+        Initialize the user interface with required persistence dependencies.
+
+        The database manager is used exclusively for retrieving chat history.
         """
         self.session_memory: SessionMemory = SessionMemory()
         self.database_manager: DatabaseManager = database_manager
 
     def run(self) -> None:
         """
-        Docstring for run
-        
-        :param self: Description
+        Entry point for rendering and running the user interface.
         """
         self._init_session_and_config()
         self._display_chat_history()
@@ -54,9 +56,7 @@ class UserInterface:
 
     def _init_session_and_config(self) -> None:
         """
-        Docstring for _init_session_and_config
-        
-        :param self: Description
+        Initialize Streamlit session state and application configuration.
         """
         if st.session_state.get("init_app") is None:
             self.database_manager.init_internal_database()
@@ -75,9 +75,10 @@ class UserInterface:
 
     def _display_chat_history(self) -> None:
         """
-        Docstring for _display_chat_history
-        
-        :param self: Description
+        Render persisted chat history into the UI.
+
+        Chat turns are grouped and displayed sequentially to reflect prior
+        interactions within the current session.
         """
         chat_history: List[ChatHistory] = self.database_manager.index_chat_history()
         self.session_memory.turn_num = max(chat.turn_num for chat in chat_history) if chat_history else 0
@@ -94,9 +95,10 @@ class UserInterface:
 
     def _process_chat_input(self) -> None:
         """
-        Docstring for _process_chat_input
-        
-        :param self: Description
+        Capture and process new user input.
+
+        When a new prompt is submitted, the UI immediately renders the input
+        and triggers a rerun after graph execution.
         """
         if chat_input := st.chat_input("Chat with AI"):
             self.session_memory.chat_input = chat_input
@@ -105,13 +107,10 @@ class UserInterface:
 
     def _render_chat_turn_block(self, on_processing_request: bool = False, chat_turn: List[Union[ChatHistory, str]] = []) -> None:
         """
-        Docstring for _render_chat_turn_block
-        
-        :param self: Description
-        :param on_processing_request: Description
-        :type on_processing_request: bool
-        :param chat_turn: Description
-        :type chat_turn: List[Union[ChatHistory, str]]
+        Render a single chat turn block.
+
+        A chat turn consists of a user prompt and a corresponding system response,
+        optionally displaying streamed output during active processing.
         """
         st.divider()
 
@@ -135,15 +134,10 @@ class UserInterface:
     
     def _render_turn_element(self, input_type: bool, on_processing_request: bool, turn_element: Optional[Union[ChatHistory, str]]) -> None:
         """
-        Docstring for _render_turn_element
-        
-        :param self: Description
-        :param input_type: Description
-        :type input_type: bool
-        :param on_processing_request: Description
-        :type on_processing_request: bool
-        :param turn_element: Description
-        :type turn_element: Optional[Union[ChatHistory, str]]
+        Render an individual element within a chat turn.
+
+        Depending on the execution state, this method either displays persisted
+        content or streams live output from the graph execution.
         """
         if on_processing_request:
             st.write(self.session_memory.chat_input) if input_type else self._graph_invocation()
@@ -156,9 +150,11 @@ class UserInterface:
 
     def _graph_invocation(self) -> None:
         """
-        Docstring for _graph_invocation
-        
-        :param self: Description
+        Invoke the orchestration graph and stream execution updates to the UI.
+
+        This method bridges user input to the compiled state graph, monitors
+        node-level updates, and renders intermediate status and final outputs
+        as they become available.
         """
         graph: CompiledStateGraph[State, Context] = load_graph_orchestrator()
 
@@ -225,11 +221,10 @@ class UserInterface:
 
     def _stream_generator(self) -> Generator:
         """
-        Docstring for _stream_generator
-        
-        :param self: Description
-        :return: Description
-        :rtype: Generator[Any, None, None]
+        Generate streamed text output for incremental rendering.
+
+        This generator yields tokens derived from either intermediate reasoning
+        or final chat output, enabling a progressive display experience.
         """
         if self.session_memory.thinking:
             for word in str(self.session_memory.thinking).split(" "):
@@ -245,9 +240,10 @@ class UserInterface:
 
     def _show_toast_message(self) -> None:
         """
-        Docstring for _show_toast_message
-        
-        :param self: Description
+        Display contextual toast notifications to the user.
+
+        Notifications reflect execution outcomes such as success, domain mismatch,
+        or system failure.
         """
         if st.session_state["success_toast"]:
             st.session_state["success_toast"] = False

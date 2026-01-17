@@ -1,5 +1,8 @@
 """
-Docstring for context.models
+Internal data models for the conversational system.
+
+This package defines schemas and table references used to represent
+contextual memory within the system.
 """
 from .chat_history import (
     ChatHistory,

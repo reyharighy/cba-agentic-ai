@@ -1,5 +1,9 @@
 """
-Docstring for graph.state
+State definitions for graph-based execution.
+
+This module defines the mutable state object that flows through the graph.
+The state is progressively enriched by node outputs and is used to
+coordinate decision-making, execution routing, and response generation.
 """
 # standard
 from typing import (
@@ -13,7 +17,7 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import MessagesState
 
 # internal
-from schema import (
+from schema.llm import (
     AnalysisOrchestration,
     ComputationPlanning,
     IntentComprehension,
@@ -23,7 +27,12 @@ from schema import (
 
 class State(MessagesState):
     """
-    Docstring for State
+    Mutable execution state propagated through the graph.
+
+    This class represents the evolving analytical and conversational
+    state during graph execution. Each node may read from and update
+    specific fields to reflect its output, enabling downstream routing
+    and decision logic.
     """
     ui_payload: Optional[Dict[str, str]]
     intent_comprehension: Optional[IntentComprehension]

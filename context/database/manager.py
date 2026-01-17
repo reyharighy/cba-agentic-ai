@@ -1,5 +1,8 @@
 """
-Docstring for context.context_manager
+Database management abstraction.
+
+This module defines a unified interface for interacting with both
+internal system storage and external data sources used by the application.
 """
 # internal
 from pathlib import Path
@@ -44,28 +47,29 @@ from context.models import (
 class DatabaseManager:
     def __init__(self, internal_db_url: str, external_db_url: str) -> None:
         """
-        Docstring for __init__
-        
-        :param self: Description
+        Initialize database connections.
+
+        This constructor prepares database engines for internal system storage
+        and external data access based on the provided connection URLs.
         """
         self.internal: Engine = create_engine(internal_db_url)
         self.external: Engine = create_engine(external_db_url)
 
     def init_internal_database(self) -> None:
         """
-        Docstring for init_internal_database
-        
-        :param self: Description
+        Initialize internal database schema.
+
+        This method ensures that required internal tables are available
+        for system operation.
         """
         table_schema_metadata.create_all(self.internal)
 
     def index_chat_history(self) -> List[ChatHistory]:
         """
-        Docstring for index_chat_history
-        
-        :param self: Description
-        :return: Description
-        :rtype: List[ChatHistory]
+        Retrieve all stored chat history entries.
+
+        This method returns the full set of recorded conversational history
+        maintained by the system.
         """
         with self.internal.begin() as connection:
             result: CursorResult = connection.execute(
@@ -79,24 +83,18 @@ class DatabaseManager:
 
     def store_chat_history(self, params: ChatHistory) -> None:
         """
-        Docstring for store_chat_history
-        
-        :param self: Description
-        :param params: Description
-        :type params: ChatHistory
+        Persist a chat history entry.
+
+        This method records a conversational interaction into internal storage.
         """
         with self.internal.begin() as connection:
             connection.execute(chat_histories.insert().values(**params.model_dump()))
 
     def show_chat_history(self, params: ChatHistoryShow) -> List[ChatHistory]:
         """
-        Docstring for show_chat_history
-        
-        :param self: Description
-        :param params: Description
-        :type params: ChatHistoryShow
-        :return: Description
-        :rtype: List[ChatHistory]
+        Retrieve chat history for a specific interaction context.
+
+        This method returns chat history entries associated with a given scope.
         """
         with self.internal.begin() as connection:
             result: CursorResult = connection.execute(
@@ -111,11 +109,10 @@ class DatabaseManager:
 
     def index_short_memory(self) -> List[ShortMemory]:
         """
-        Docstring for index_short_memory
-        
-        :param self: Description
-        :return: Description
-        :rtype: List[ShortMemory]
+         Retrieve all short-term memory entries.
+
+        This method returns the collection of short-term memory records
+        maintained by the system.
         """
         with self.internal.begin() as connection:
             result: CursorResult = connection.execute(
@@ -129,24 +126,19 @@ class DatabaseManager:
 
     def store_short_memory(self, params: ShortMemory) -> None:
         """
-        Docstring for store_short_memory
-        
-        :param self: Description
-        :param params: Description
-        :type params: ShortMemory
+        Persist a short-term memory entry.
+
+        This method records temporary system memory into internal storage.
         """
         with self.internal.begin() as connection:
             connection.execute(short_memories.insert().values(**params.model_dump()))
 
     def show_short_memory(self, params: ShortMemoryShow) -> Optional[ShortMemory]:
         """
-        Docstring for show_short_memory
-        
-        :param self: Description
-        :param params: Description
-        :type params: ShortMemoryShow
-        :return: Description
-        :rtype: ShortMemory | None
+        Retrieve short-term memory for a specific context.
+
+        This method returns the most relevant short-term memory entry
+        for the given scope, if available.
         """
         with self.internal.begin() as connection:
             result: CursorResult = connection.execute(
@@ -163,11 +155,10 @@ class DatabaseManager:
 
     def inspect_external_database(self) -> Dict[str, Union[List, Dict]]:
         """
-        Docstring for inspect_external_database
-        
-        :param self: Description
-        :return: Description
-        :rtype: Dict[str, List[Any] | Dict[Any, Any]]
+        Inspect the structure of the external database.
+
+        This method gathers structural information about external data sources
+        to support downstream analysis and reasoning.
         """
         inspector: Any = inspect(self.external)
         table_names: List[str] = inspector.get_table_names()
@@ -230,11 +221,9 @@ class DatabaseManager:
 
     def show_last_saved_sql_query(self) -> Optional[str]:
         """
-        Docstring for show_last_saved_sql_query
-        
-        :param self: Description
-        :return: Description
-        :rtype: str | None
+        Retrieve the most recent stored query.
+
+        This method returns the last query recorded by the system, if present.
         """
         with self.internal.begin() as connection:
             result: CursorResult = connection.execute(
@@ -251,11 +240,10 @@ class DatabaseManager:
 
     def extract_external_database(self, statement: str) -> None:
         """
-        Docstring for retrieve_external_data
-        
-        :param self: Description
-        :param statement: Description
-        :type statement: str
+        Extract data from the external database.
+
+        This method executes a query against an external data source and
+        materializes the result into a dataset usable by the system.
         """
         output_path: Path = Path(working_dataset_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)

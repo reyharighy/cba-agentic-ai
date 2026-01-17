@@ -1,5 +1,8 @@
 """
-Docstring for util.custom_decorator
+Custom decorators for application-level concerns.
+
+This module defines lightweight decorators that standardize
+cross-cutting behaviors.
 """
 # standard
 from functools import wraps
@@ -18,14 +21,11 @@ R = TypeVar("R")
 
 def st_cache(spinner_text: str, cache_type: Literal["data", "resource"]) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
-    Docstring for st_cache
-    
-    :param spinner_text: Description
-    :type spinner_text: str
-    :param cache_type: Description
-    :type cache_type: Literal["data", "resource"]
-    :return: Description
-    :rtype: Callable[[Callable[P, R]], Callable[P, R]]
+    Decorator factory for unified caching behavior.
+
+    This decorator provides a consistent interface for applying
+    caching semantics while abstracting away the underlying
+    caching mechanism.
     """
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         if cache_type == "data":
@@ -43,14 +43,11 @@ def st_cache(spinner_text: str, cache_type: Literal["data", "resource"]) -> Call
 
 def st_status_container(processing_text_status: str, expanded: bool = False) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
-    Docstring for st_status_container
-    
-    :param processing_text_status: Description
-    :type processing_text_status: str
-    :param expanded: Description
-    :type expanded: bool
-    :return: Description
-    :rtype: Callable[[Callable[P, R]], Callable[P, R]]
+    Decorator factory for execution status visualization.
+
+    This decorator wraps a function execution within a
+    transient status container, intended to communicate
+    processing state during interactive workflows.
     """
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @wraps(func)

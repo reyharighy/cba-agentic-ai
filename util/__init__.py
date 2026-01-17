@@ -1,5 +1,9 @@
 """
-Docstring for util
+Utility abstractions.
+
+This package provides small, reusable helpers that encapsulate
+framework-specific concerns, allowing the rest of the system
+to remain focused on domain logic rather than UI or runtime details.
 """
 from .custom_decorator import (
     st_cache,
