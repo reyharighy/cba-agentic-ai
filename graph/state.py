@@ -35,6 +35,7 @@ class State(MessagesState):
     and decision logic.
     """
     ui_payload: Optional[Dict[str, str]]
+    next_node: Optional[str]
     intent_comprehension: Optional[IntentComprehension]
     request_classification: Optional[RequestClassification]
     analysis_orchestration: Optional[AnalysisOrchestration]

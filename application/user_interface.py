@@ -34,6 +34,7 @@ from graph import (
     Context,
     State,
 )
+from graph.stages import enable_interactive_graph
 
 class UserInterface:
     def __init__(self, database_manager: DatabaseManager) -> None:
@@ -161,6 +162,7 @@ class UserInterface:
         graph_input: State = State(
             messages=[HumanMessage(self.session_memory.chat_input)],
             ui_payload=None,
+            next_node=None,
             intent_comprehension=None,
             request_classification=None,
             analysis_orchestration=None,
@@ -176,8 +178,18 @@ class UserInterface:
             sandbox_bootstrap=load_sandbox_bootstrap()
         )
 
-        status_box: DeltaGenerator = st.status("Understanding request intent", expanded=True)
+        end_nodes: List[str] = ["punt_response", "summarization"]
         pass_through_nodes: List[str] = ["data_retrieval", "sandbox_environment"]
+
+        status_box: DeltaGenerator = st.status("Understanding request intent", expanded=True)
+        thinking_placeholder: DeltaGenerator = status_box.empty()
+        graph_placeholder: DeltaGenerator = status_box.empty()
+        
+        if enable_interactive_graph:
+            graph_placeholder.image(
+                image='./graph/stages/intent_comprehension.png',
+                width=700,
+            )
 
         try:
             for chunk in graph.stream(input=graph_input, context=graph_context, stream_mode="updates"):
@@ -193,7 +205,13 @@ class UserInterface:
                     status_box.update(label=ui_payload)
 
                 if node_name in pass_through_nodes:
-                        continue
+                    if enable_interactive_graph and node_name not in end_nodes:
+                        graph_placeholder.image(
+                            image=f"./graph/stages/{node_state["next_node"]}.png",
+                            width=700,
+                        )
+
+                    continue
 
                 try:
                     if node_name == "self_correction" or node_name == "self_reflection":
@@ -201,11 +219,23 @@ class UserInterface:
                     else:
                         self.session_memory.thinking = node_state[node_name].rationale
 
-                    status_box.write(self._stream_generator)
+                    thinking_placeholder.write(self._stream_generator)
+
+                    if enable_interactive_graph and node_name not in end_nodes:
+                        graph_placeholder.image(
+                            image=f"./graph/stages/{node_state["next_node"]}.png",
+                            width=700,
+                        )
                 except Exception as _:
                     if node_name != "summarization":
                         self.session_memory.chat_output = node_state["messages"][-1].content
                         st.write(self._stream_generator)
+
+                        if enable_interactive_graph and node_name != "punt_response" and node_state["next_node"] == "summarization":
+                            graph_placeholder.image(
+                                image=f"./graph/stages/{node_state["next_node"]}.png",
+                                width=700,
+                            )
 
                     if node_name == "summarization":
                         st.session_state["success_toast"] = True
@@ -216,7 +246,7 @@ class UserInterface:
         except Exception as e:
             st.session_state["error_toast"] = True
             st.error(f"Graph execution failed: {e}")
-        
+
         status_box.update(state="complete")
 
     def _stream_generator(self) -> Generator:

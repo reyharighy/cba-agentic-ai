@@ -99,6 +99,7 @@ class Orchestrator:
         return {
             "ui_payload": "Classifying request",
             "intent_comprehension": serialized_output,
+            "next_node": "request_classification",
         }
 
     def request_classification(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analysis_orchestration", "direct_response", "punt_response"]]:
@@ -129,7 +130,8 @@ class Orchestrator:
                     goto="analysis_orchestration",
                     update={
                         "ui_payload": "Determining strategy for analysis",
-                        "request_classification": serialized_output
+                        "request_classification": serialized_output,
+                        "next_node": "analysis_orchestration",
                     }
                 )
             case "direct_response":
@@ -137,7 +139,8 @@ class Orchestrator:
                     goto="direct_response",
                     update={
                         "ui_payload": "Formulating response without analytical computation",
-                        "request_classification": serialized_output
+                        "request_classification": serialized_output,
+                        "next_node": "direct_response",
                     }
                 )
             case "punt_response":
@@ -145,7 +148,8 @@ class Orchestrator:
                     goto="punt_response",
                     update={
                         "ui_payload": "Formulating response that request is out of business analytical domain",
-                        "request_classification": serialized_output
+                        "request_classification": serialized_output,
+                        "next_node": "punt_response",
                     }
                 )
             case _:
@@ -167,7 +171,8 @@ class Orchestrator:
 
         return {
             "ui_payload": "Finalizing response",
-            "messages": [llm_output]
+            "messages": [llm_output],
+            "next_node": "summarization",
         }
 
     def punt_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
@@ -184,7 +189,8 @@ class Orchestrator:
 
         return {
             "ui_payload": "Finalizing response",
-            "messages": [llm_output]
+            "messages": [llm_output],
+            "next_node": "end"
         }
 
     def analysis_orchestration(self, state: State, runtime: Runtime[Context]) -> Command[Literal["data_unavailability", "data_retrieval", "computation_planning"]]:
@@ -219,7 +225,8 @@ class Orchestrator:
                     goto="data_unavailability",
                     update={
                         "ui_payload": "Discovering that business data is insufficient to perform analytical computation",
-                        "analysis_orchestration": serialized_output
+                        "analysis_orchestration": serialized_output,
+                        "next_node": "data_unavailability",
                     }
                 )
             case "data_retrieval":
@@ -227,7 +234,8 @@ class Orchestrator:
                     goto="data_retrieval",
                     update={
                         "ui_payload": "Extracting business data from external database",
-                        "analysis_orchestration": serialized_output
+                        "analysis_orchestration": serialized_output,
+                        "next_node": "data_retrieval",
                     }
                 )
             case "computation_planning":
@@ -235,7 +243,8 @@ class Orchestrator:
                     goto="computation_planning",
                     update={
                         "ui_payload": "Creating analytical computation plan",
-                        "analysis_orchestration": serialized_output
+                        "analysis_orchestration": serialized_output,
+                        "next_node": "computation_planning",
                     }
                 )
             case _:
@@ -259,7 +268,8 @@ class Orchestrator:
 
         return {
             "ui_payload": "Finalizing response",
-            "messages": [llm_output]
+            "messages": [llm_output],
+            "next_node": "summarization",
         }
 
     def data_retrieval(self, state: State) -> Dict[str, Any]:
@@ -274,7 +284,10 @@ class Orchestrator:
                 sql_query: str = state["analysis_orchestration"].sql_query
                 self.database_manager.extract_external_database(sql_query)
 
-                return {"ui_payload": "Creating analytical computation plan"}
+                return {
+                    "ui_payload": "Creating analytical computation plan",
+                    "next_node": "computation_planning",
+                }
 
             raise ValueError("'analysis_orchestration' state does not contains 'sql_query' attribute when retrieving data")
         else:
@@ -306,7 +319,8 @@ class Orchestrator:
 
         return {
             "ui_payload": "Executing analytical computation plan",
-            "computation_planning": serialized_output
+            "computation_planning": serialized_output,
+            "next_node": "sandbox_environment",
         }
 
     def sandbox_environment(self, state: State, runtime: Runtime[Context]) -> Command[Literal["observation", "self_correction"]]:
@@ -338,7 +352,8 @@ class Orchestrator:
                     goto="observation",
                     update={
                         "ui_payload": "Observing computational execution result",
-                        "execution": execution
+                        "execution": execution,
+                        "next_node": "observation",
                     }
                 )
             case False:
@@ -346,7 +361,8 @@ class Orchestrator:
                     goto="self_correction",
                     update={
                         "ui_payload": "Correcting analytical computation syntax",
-                        "execution": execution
+                        "execution": execution,
+                        "next_node": "self_correction",
                     }
                 )
 
@@ -382,7 +398,8 @@ class Orchestrator:
                     goto="self_reflection",
                     update={
                         "ui_payload": "Reflecting analytical plan for better analytical result",
-                        "observation": serialized_output
+                        "observation": serialized_output,
+                        "next_node": "self_reflection",
                     }
                 )
             case "sufficient":
@@ -390,7 +407,8 @@ class Orchestrator:
                     goto="analysis_response",
                     update={
                         "ui_payload": "Formulating response based on observation result",
-                        "observation": serialized_output
+                        "observation": serialized_output,
+                        "next_node": "analysis_response",
                     }
                 )
             case _:
@@ -420,7 +438,8 @@ class Orchestrator:
 
         return {
             "ui_payload": "Executing analytical computation plan with corrected syntax",
-            "computation_planning": serialized_output
+            "computation_planning": serialized_output,
+            "next_node": "sandbox_environment",
         }
 
     def self_reflection(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
@@ -447,7 +466,8 @@ class Orchestrator:
 
         return {
             "ui_payload": "Executing refined analytical computation plan",
-            "computation_planning": serialized_output
+            "computation_planning": serialized_output,
+            "next_node": "sandbox_environment",
         }
 
     def analysis_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
@@ -472,7 +492,8 @@ class Orchestrator:
 
         return {
             "ui_payload": "Finalizing response",
-            "messages": [llm_output]
+            "messages": [llm_output],
+            "next_node": "summarization",
         }
 
     def summarization(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:

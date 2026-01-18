@@ -271,6 +271,22 @@ This allows:
 - reproducible analytical scenarios,
 - safe experimentation without real business data.
 
+## Interactive Graph Feature
+
+This project supports an optional interactive execution graph that visualizes the agent’s reasoning flow and execution states.
+
+When enabled, the system renders a step-by-step graph showing which node is currently active during execution. This is useful for debugging, inspection, and understanding how requests propagate through the pipeline.
+
+The feature is enabled by default.
+
+To disable it, set the following variable in your .env file:
+
+```env
+ENABLE_INTERACTIVE_GRAPH=false
+```
+
+When disabled, the system runs normally without any visualization overhead.
+
 ## Notes for Contributors
 
 - This project prioritizes clarity over cleverness
