@@ -180,16 +180,16 @@ class UserInterface:
 
         end_nodes: List[str] = ["punt_response", "summarization"]
         pass_through_nodes: List[str] = ["data_retrieval", "sandbox_environment"]
-
         status_box: DeltaGenerator = st.status("Understanding request intent", expanded=True)
-        thinking_placeholder: DeltaGenerator = status_box.empty()
-        graph_placeholder: DeltaGenerator = status_box.empty()
-        
+        column_containers: List[DeltaGenerator] = []
+        graph_placeholder: Optional[DeltaGenerator] = None
+
         if enable_interactive_graph:
-            graph_placeholder.image(
-                image='./graph/stages/intent_comprehension.png',
-                width=700,
-            )
+            column_containers = status_box.columns([0.4, 0.6], border=True)
+            column_containers[0].subheader("Graph Execution Runtime Visualization")
+            column_containers[1].subheader("Thinking Output")
+            graph_placeholder = column_containers[0].empty()
+            self._render_graph_element(graph_placeholder, None)
 
         try:
             for chunk in graph.stream(input=graph_input, context=graph_context, stream_mode="updates"):
@@ -205,11 +205,15 @@ class UserInterface:
                     status_box.update(label=ui_payload)
 
                 if node_name in pass_through_nodes:
-                    if enable_interactive_graph and node_name not in end_nodes:
-                        graph_placeholder.image(
-                            image=f"./graph/stages/{node_state["next_node"]}.png",
-                            width=700,
-                        )
+                    action_output: str = "Extracted business data." if node_name == "data_retrieval" else "Executed computational plan."
+
+                    if column_containers:
+                        column_containers[1].write(action_output)
+                    else:
+                        status_box.write(action_output)
+
+                    if enable_interactive_graph and graph_placeholder and node_name not in end_nodes:
+                        self._render_graph_element(graph_placeholder, node_state)
 
                     continue
 
@@ -219,23 +223,19 @@ class UserInterface:
                     else:
                         self.session_memory.thinking = node_state[node_name].rationale
 
-                    thinking_placeholder.write(self._stream_generator)
+                    if enable_interactive_graph and graph_placeholder and node_name not in end_nodes:
+                        column_containers[1].write(self._stream_generator)
+                        self._render_graph_element(graph_placeholder, node_state)
+                    else:
+                        status_box.write(self._stream_generator)
 
-                    if enable_interactive_graph and node_name not in end_nodes:
-                        graph_placeholder.image(
-                            image=f"./graph/stages/{node_state["next_node"]}.png",
-                            width=700,
-                        )
                 except Exception as _:
                     if node_name != "summarization":
                         self.session_memory.chat_output = node_state["messages"][-1].content
                         st.write(self._stream_generator)
 
-                        if enable_interactive_graph and node_name != "punt_response" and node_state["next_node"] == "summarization":
-                            graph_placeholder.image(
-                                image=f"./graph/stages/{node_state["next_node"]}.png",
-                                width=700,
-                            )
+                        if enable_interactive_graph and graph_placeholder and node_name != "punt_response" and node_state["next_node"] == "summarization":
+                            self._render_graph_element(graph_placeholder, node_state)
 
                     if node_name == "summarization":
                         st.session_state["success_toast"] = True
@@ -243,11 +243,24 @@ class UserInterface:
                         st.session_state["punt_toast"] = True
                         st.session_state["punt_response"].append(self.session_memory.chat_input)
                         st.session_state["punt_response"].append(self.session_memory.chat_output)
+                        status_box.update(state="complete")
+
         except Exception as e:
             st.session_state["error_toast"] = True
             st.error(f"Graph execution failed: {e}")
 
-        status_box.update(state="complete")
+    def _render_graph_element(self, graph_placeholder: DeltaGenerator, node_state: Optional[Dict]) -> None:
+        """
+        Render the current execution stage of the orchestration graph.
+
+        This method updates the graph visualization in the UI by displaying
+        a static image corresponding to the graph's next node. When no node
+        state is available, it renders the initial entry point of the graph.
+        """
+        graph_placeholder.image(
+            image=f"./graph/stages/{node_state["next_node"]}.png" if node_state else './graph/stages/intent_comprehension.png',
+            width="stretch",
+        )
 
     def _stream_generator(self) -> Generator:
         """
