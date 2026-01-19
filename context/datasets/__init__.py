@@ -4,9 +4,11 @@ Path configuration for working datasets.
 This module provides a reference to the location where
 datasets used during application execution are stored.
 """
-import os
+from pathlib import Path
 
-working_dataset_path: str = os.getenv("WORKING_DATASET_FILE", "")
+_BASE_DIR = Path(__file__).resolve().parent
+
+working_dataset_path: str = str(_BASE_DIR / "dataset.csv")
 
 __all__ = [
     "working_dataset_path"
