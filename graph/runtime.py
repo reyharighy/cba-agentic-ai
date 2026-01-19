@@ -7,7 +7,10 @@ information required by multiple nodes during a single execution cycle
 """
 # standard
 from dataclasses import dataclass
-from typing import Dict
+from typing import (
+    Dict,
+    Literal
+)
 
 @dataclass
 class Context:
@@ -20,4 +23,4 @@ class Context:
     """
     turn_num: int
     prompts_set: Dict[str, str]
-    sandbox_bootstrap: str
+    sandbox_bootstrap: Dict[Literal["descriptive", "diagnostic", "predictive", "inferential"], str]

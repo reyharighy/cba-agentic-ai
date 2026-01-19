@@ -19,6 +19,7 @@ from langchain_core.messages import (
     AIMessage,
     HumanMessage,
 )
+from langgraph.runtime import Runtime
 from pandas.api.types import (
     is_datetime64_any_dtype,
     is_numeric_dtype,
@@ -27,6 +28,7 @@ from pandas.api.types import (
 from pandas.errors import EmptyDataError
 
 # internal
+from .runtime import Context
 from .state import State
 from context.database import DatabaseManager
 from context.datasets import working_dataset_path
@@ -176,6 +178,24 @@ class Operator:
             return context_prompt
 
         raise ValueError(f"'analysis_orchestration' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_python_code(self, state: State, runtime: Runtime[Context]) -> str:
+        """
+        Generate the executable Python code for sandbox execution.
+
+        This method assembles the sandbox bootstrap code based on the analysis type.
+        """
+        code: str = ""
+
+        if state["computation_planning"]:
+            code += runtime.context.sandbox_bootstrap[state["computation_planning"].analysis_type]
+
+            for step in state["computation_planning"].steps:
+                code += '\n' + step.python_code + '\n'
+
+            return code
+        else:
+            raise ValueError(f"'computation_planning' state must not be empty in '{sys._getframe(0).f_code.co_name}' node")
 
     def get_computational_plan(self, state: State, original: bool = False) -> str:
         """

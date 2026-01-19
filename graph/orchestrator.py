@@ -335,14 +335,7 @@ class Orchestrator:
         with open(working_dataset_path, "rb") as dataset:
             sandbox.files.write('dataset.csv', dataset.read())
 
-        code : str = runtime.context.sandbox_bootstrap
-
-        if state["computation_planning"]:
-            for step in state["computation_planning"].steps:
-                code += step.python_code + '\n'
-        else:
-            raise ValueError("'computation_planning' state must not be empty in 'sandbox_environment' node")
-
+        code: str = self.operator.get_python_code(state, runtime)
         execution: Execution = sandbox.run_code(code)
         sandbox.kill()
 

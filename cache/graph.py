@@ -5,7 +5,10 @@ This module provides cached access to graph-related components
 used during agent execution.
 """
 # standard
-from typing import Dict
+from typing import (
+    Dict,
+    Literal,
+)
 
 # third-party
 from langgraph.graph.state import CompiledStateGraph
@@ -71,18 +74,27 @@ def load_prompts_set() -> Dict[str, str]:
     }
 
 @st_cache("Loading bootsrap code for sandbox environment", "data")
-def load_sandbox_bootstrap() -> str:
+def load_sandbox_bootstrap() -> Dict[Literal["descriptive", "diagnostic", "predictive", "inferential"], str]:
     """
     Load sandbox bootstrap code.
 
-    This function provides initialization code for the
-    sandboxed execution environment.
+    This function provides a dictionary of initialization code for the
+    sandboxed execution environment categorized based on analysis type.
     """
-    bootstrap_code: str = ""
-    bootstrap_code += "import pandas as pd\n"
-    bootstrap_code += "import numpy as np\n"
-    bootstrap_code += "import scipy\n"
-    bootstrap_code += "import sklearn\n"
-    bootstrap_code += "df = pd.read_csv('dataset.csv')\n"
+    pandas: str = "import pandas as pd"
+    numpy: str =  "import numpy as np"
+    scipy: str = "import scipy"
+    sklearn: str = "import sklearn"
+    df_load: str = "df = pd.read_csv('dataset.csv')"
 
-    return bootstrap_code
+    descriptive: str = pandas + '\n' + numpy + '\n' + df_load
+    diagnostic: str = pandas + '\n' + numpy + '\n' + scipy + '\n' + df_load
+    predictive: str = pandas + '\n' + numpy + '\n' + scipy + '\n' + df_load
+    inferential: str = pandas + '\n' + numpy + '\n' + sklearn + '\n' + df_load
+
+    return {
+        "descriptive": descriptive,
+        "diagnostic": diagnostic,
+        "predictive": predictive,
+        "inferential": inferential,
+    }
