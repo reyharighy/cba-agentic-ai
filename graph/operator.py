@@ -56,7 +56,7 @@ class Operator:
             context_prompt: str = "\n\nConversation history summarized by turn number:"
 
             for short_memory in short_memories:
-                context_prompt += f"\nTurn-{short_memory.turn_num}: {short_memory.summary}"
+                context_prompt += f"\n[TURN-{short_memory.turn_num}]: {short_memory.summary}"
 
             return context_prompt
 
@@ -91,7 +91,7 @@ class Operator:
         This context is used to inform analytical planning and query generation
         by describing available tables, columns, and structural metadata.
         """
-        context_prompt: str = "\n\nExternal database schema information:\n"
+        context_prompt: str = "\n\nThe external database schema information:\n"
         context_prompt += repr(self.database_manager.inspect_external_database())
 
         return context_prompt
@@ -140,7 +140,7 @@ class Operator:
         especially when subsequent reasoning depends on prior data extraction.
         """
         if sql_query := self.database_manager.show_last_saved_sql_query():
-            context_prompt: str = "\n\nThe dataframe object representation above is extracted using the following SQL query:\n"
+            context_prompt: str = "\n\nThe dataframe representation above is previously extracted from external database using the following SQL query:\n"
             context_prompt += str(sql_query)
 
             return context_prompt
@@ -169,14 +169,15 @@ class Operator:
         This context links analytical results back to their data provenance.
         """
         if state["analysis_orchestration"]:
-            context_prompt: str = "\n\nThe dataframe object representation above is extracted using the following SQL query:\n"
+            context_prompt: str = "\n\nThe dataframe representation above is previously extracted from external database using the following SQL query:\n"
             context_prompt += str(state["analysis_orchestration"].sql_query)
+            context_prompt += f"\nThe rationale of executed SQL query: {state["analysis_orchestration"].syntax_rationale}"
 
             return context_prompt
 
         raise ValueError(f"'analysis_orchestration' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
 
-    def get_computational_plan_list(self, state: State) -> str:
+    def get_computational_plan(self, state: State, original: bool = False) -> str:
         """
         List the analytical computation steps that were generated.
 
@@ -184,10 +185,10 @@ class Operator:
         execution and subsequent observation.
         """
         if state["computation_planning"]:
-            context_prompt: str = "\n\nThe computation plan that was generated:"
+            context_prompt: str = "\n\nThe step-by-step computational plan:"
 
             for step in state["computation_planning"].steps:
-                context_prompt += f"\n- {step}"
+                context_prompt += f"\n{step.number}. {step.description} {step.rationale}" if not original else f"\n- {step}"
 
             return context_prompt
 
@@ -201,7 +202,7 @@ class Operator:
         computations and is used during result evaluation.
         """
         if state["execution"]:
-            context_prompt: str = "\n\nThe execution logs from sandbox environment:\n"
+            context_prompt: str = "\n\nThe execution logs from the sandbox environment:\n"
             context_prompt += str(state["execution"].logs.stdout[0])
 
             return context_prompt
@@ -216,7 +217,7 @@ class Operator:
         planning during self-correction stages.
         """
         if state["execution"] and state["execution"].error:
-            context_prompt: str = "\n\nThe traceback error:\n"
+            context_prompt: str = "\n\nThe traceback error messages from sandbox environment:\n"
             context_prompt += state["execution"].error.traceback
 
             return context_prompt
@@ -231,7 +232,7 @@ class Operator:
         are sufficient or require further refinement.
         """
         if state["observation"]:
-            context_prompt: str = "\n\nThe observation rationale:\n"
+            context_prompt: str = "\n\nThe observation result on executed computational plan:\n"
             context_prompt += state["observation"].rationale
 
             return context_prompt

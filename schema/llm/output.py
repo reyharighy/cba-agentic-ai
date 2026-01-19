@@ -57,6 +57,10 @@ class AnalysisOrchestration(BaseModel):
         ...,
         description="SQL query to execute if data_retrieval is required for the next process"
     )
+    syntax_rationale: str = Field(
+        ...,
+        description="Short explanation of why the generated SQL query is valid and appropriate"
+    )
     rationale: str = Field(
         ...,
         description="Short explanation of why this route category is selected"

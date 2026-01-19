@@ -375,9 +375,10 @@ class Orchestrator:
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.operator.get_database_schema_and_sample_values()
         context_prompt += self.operator.get_dataframe_schema_and_sample_values()
         context_prompt += self.operator.get_last_executed_sql_query(state)
-        context_prompt += self.operator.get_computational_plan_list(state)
+        context_prompt += self.operator.get_computational_plan(state)
         context_prompt += self.operator.get_execution_stdout(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
@@ -423,10 +424,12 @@ class Orchestrator:
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
-        context_prompt += self.operator.get_computational_plan_list(state)
+        context_prompt += self.operator.get_computational_plan(state, original=True)
         context_prompt += self.operator.get_execution_error(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
+        llm_input += self.operator.get_relevant_conversation(state)
+        llm_input += state["messages"]
 
         llm: Runnable = self.gpt_120b.with_structured_output(
             schema=ComputationPlanning,
@@ -451,10 +454,12 @@ class Orchestrator:
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
-        context_prompt += self.operator.get_computational_plan_list(state)
+        context_prompt += self.operator.get_computational_plan(state, original=True)
         context_prompt += self.operator.get_observation_rationale(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
+        llm_input += self.operator.get_relevant_conversation(state)
+        llm_input += state["messages"]
 
         llm: Runnable = self.gpt_120b.with_structured_output(
             schema=ComputationPlanning,
@@ -479,11 +484,9 @@ class Orchestrator:
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
-        context_prompt += self.operator.get_database_schema_and_sample_values()
-        context_prompt += self.operator.get_dataframe_schema_and_sample_values()
-        context_prompt += self.operator.get_last_executed_sql_query(state)
-        context_prompt += self.operator.get_computational_plan_list(state)
+        context_prompt += self.operator.get_computational_plan(state)
         context_prompt += self.operator.get_execution_stdout(state)
+        context_prompt += self.operator.get_observation_rationale(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
@@ -505,7 +508,9 @@ class Orchestrator:
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
-        llm_input: Sequence = [system_message] + state["messages"]
+        llm_input: Sequence = [system_message]
+        llm_input += self.operator.get_relevant_conversation(state)
+        llm_input += state["messages"]
         llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
 
         turn_num = runtime.context.turn_num + 1
