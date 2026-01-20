@@ -11,11 +11,17 @@ from typing import (
 )
 
 # third-party
+from langchain_core.language_models import BaseChatModel
 from langgraph.graph.state import CompiledStateGraph
 
 # internal
 from .context import load_database_manager
-from context.database import DatabaseManager
+from .language_model import load_language_models
+from agent import (
+    Graph,
+    Context,
+    State,
+)
 from context.system_prompts import (
     ANALYSIS_RESPONSE,
     ANALYSIS_ORCHESTRATION,
@@ -30,25 +36,26 @@ from context.system_prompts import (
     SELF_REFLECTION,
     SUMMARIZATION,
 )
-from graph import (
-    Orchestrator,
-    Context,
-    State,
-)
+from memory.database import DatabaseManager
 from util import st_cache
 
 @st_cache("Loading graph", "resource")
-def load_graph_orchestrator() -> CompiledStateGraph[State, Context]:
+def load_graph() -> CompiledStateGraph[State, Context]:
     """
-    Load the agentic graph orchestrator.
+    Load the agentic graph.
 
     This function returns a compiled graph structure used to
     coordinate agent behavior.
     """
     database_manager: DatabaseManager = load_database_manager()
-    orchestrator = Orchestrator(database_manager)
+    language_models: Dict[Literal["complex", "basic"], BaseChatModel] = load_language_models()
 
-    return orchestrator.build_graph()
+    graph = Graph(
+        database_manager=database_manager,
+        language_models=language_models
+    )
+
+    return graph.build_graph()
 
 @st_cache("Loading prompts for graph context", "data")
 def load_prompts_set() -> Dict[str, str]:

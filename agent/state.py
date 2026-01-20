@@ -17,7 +17,7 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import MessagesState
 
 # internal
-from schema.llm import (
+from language_model.schema import (
     AnalysisOrchestration,
     ComputationPlanning,
     IntentComprehension,

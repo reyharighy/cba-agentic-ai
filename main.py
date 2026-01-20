@@ -3,7 +3,7 @@ Application entry point.
 """
 # internal
 from application import UserInterface
-from context.database import DatabaseManager
+from memory.database import DatabaseManager
 from cache import cold_start, load_database_manager
 
 def main() -> None:

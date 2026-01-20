@@ -26,7 +26,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
 
 # internal
-from context.database.config import external_db_url
+from memory.database.config import external_db_url
 
 def main() -> None:
     if os.getenv("ENABLE_EXTERNAL_DB_SEEDING", "true").lower() != "true":

@@ -29,7 +29,7 @@ class IntentComprehension(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why these turns were selected"
+        description="Clear and detailed explanation of why these turns were selected in English"
     )
 
 class RequestClassification(BaseModel):
@@ -42,7 +42,7 @@ class RequestClassification(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why this route category is selected"
+        description="Clear and detailed explanation of why this route category is selected in English"
     )
 
 class AnalysisOrchestration(BaseModel):
@@ -63,7 +63,7 @@ class AnalysisOrchestration(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why this route category is selected"
+        description="Clear and detailed explanation of why this route category is selected in English"
     )
 
 class Step(BaseModel):
@@ -93,7 +93,7 @@ class Step(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why this step is necessary"
+        description="Clear and detailed explanation of why this step is necessary in English"
     )
 
 class ComputationPlanning(BaseModel):
@@ -110,7 +110,7 @@ class ComputationPlanning(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why this procedure satisfies the user's request"
+        description="Clear and detailed explanation of why this procedure satisfies the user's request in English"
     )
 
 class Observation(BaseModel):
@@ -123,6 +123,6 @@ class Observation(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why the execution result sufficient or not to answer the user's request"
+        description="Clear and detailed explanation of why the execution result sufficient or not to answer the user's request in English"
     )
     

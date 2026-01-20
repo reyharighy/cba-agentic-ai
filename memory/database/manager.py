@@ -34,7 +34,7 @@ from sqlalchemy import (
 
 # internal
 from context.datasets import working_dataset_path
-from context.models import (
+from memory.models import (
     ChatHistory,
     ChatHistoryShow,
     ShortMemory,

@@ -23,18 +23,18 @@ from langgraph.graph.state import CompiledStateGraph
 
 # internal
 from .runtime import SessionMemory
-from cache import (
-    load_graph_orchestrator,
-    load_prompts_set,
-    load_sandbox_bootstrap,
-)
-from context.database import DatabaseManager
-from context.models import ChatHistory
-from graph import (
+from agent import (
     Context,
     State,
 )
-from graph.stages import enable_interactive_graph
+from agent.stages import enable_interactive_graph
+from cache import (
+    load_graph,
+    load_prompts_set,
+    load_sandbox_bootstrap,
+)
+from memory.database import DatabaseManager
+from memory.models import ChatHistory
 
 class UserInterface:
     def __init__(self, database_manager: DatabaseManager) -> None:
@@ -157,7 +157,7 @@ class UserInterface:
         node-level updates, and renders intermediate status and final outputs
         as they become available.
         """
-        graph: CompiledStateGraph[State, Context] = load_graph_orchestrator()
+        graph: CompiledStateGraph[State, Context] = load_graph()
 
         graph_input: State = State(
             messages=[HumanMessage(self.session_memory.chat_input)],

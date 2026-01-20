@@ -35,6 +35,7 @@
   - [Installation](#installation)
   - [Running the System](#running-the-system)
 - [Synthetic Data & External Database](#synthetic-data--external-database)
+- [Interactive Graph Feature](#interactive-graph-feature)
 - [Notes for Contributors](#notes-for-contributors)
 
 ## Overview

@@ -5,7 +5,7 @@ This module provides cached access to context-related resources
 used across different parts of the application.
 """
 # internal
-from context.database import (
+from memory.database import (
     DatabaseManager,
     internal_db_url,
     external_db_url,

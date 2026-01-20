@@ -5,7 +5,7 @@ This package contains schema definitions that constrain and validate
 the outputs produced by language models during node execution,
 ensuring predictable and machine-interpretable results.
 """
-from .output import (
+from .structured_output import (
     AnalysisOrchestration,
     ComputationPlanning,
     IntentComprehension,

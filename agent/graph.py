@@ -25,7 +25,6 @@ from langchain_core.messages import (
     SystemMessage
 )
 from langchain_core.runnables import Runnable
-from langchain_groq import ChatGroq
 from langgraph.graph import (
     StateGraph,
     END,
@@ -39,35 +38,29 @@ from langgraph.types import Command
 from .operator import Operator
 from .runtime import Context
 from .state import State
-from context.database import DatabaseManager
 from context.datasets import working_dataset_path
-from context.models import (
-    ChatHistoryCreate,
-    ShortMemoryCreate
-)
-from schema.llm import (
+from language_model.schema import (
     AnalysisOrchestration,
     ComputationPlanning,
     IntentComprehension,
     Observation,
     RequestClassification,
 )
+from memory.database import DatabaseManager
+from memory.models import (
+    ChatHistoryCreate,
+    ShortMemoryCreate
+)
 
-class Orchestrator:
-    def __init__(self, database_manager: DatabaseManager) -> None:
+class Graph:
+    def __init__(self, database_manager: DatabaseManager, language_models: Dict[Literal["complex", "basic"], BaseChatModel]) -> None:
         """
         Initialize the orchestrator with a graph definition.
         """
         self.database_manager: DatabaseManager = database_manager
         self.operator: Operator = Operator(database_manager)
-
-        self.gpt_120b: BaseChatModel = ChatGroq(
-            model="openai/gpt-oss-120b",
-            temperature=0,
-            max_tokens=None,
-            reasoning_format="parsed",
-            reasoning_effort="high",
-        )
+        self.complex: BaseChatModel = language_models["complex"]
+        self.basic: BaseChatModel = language_models["basic"]
 
         self.graph_builder: StateGraph[State, Context] = StateGraph(
             state_schema=State,
@@ -88,7 +81,7 @@ class Orchestrator:
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
 
-        llm: Runnable = self.gpt_120b.with_structured_output(
+        llm: Runnable = self.basic.with_structured_output(
             schema=IntentComprehension,
             method="json_schema"
         )
@@ -116,7 +109,7 @@ class Orchestrator:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.gpt_120b.with_structured_output(
+        llm: Runnable = self.basic.with_structured_output(
             schema=RequestClassification,
             method="json_schema"
         )
@@ -167,7 +160,7 @@ class Orchestrator:
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
+        llm_output: AIMessage = self.basic.invoke(llm_input)
 
         return {
             "ui_payload": "Finalizing response",
@@ -185,7 +178,7 @@ class Orchestrator:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
-        llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
+        llm_output: AIMessage = self.basic.invoke(llm_input)
 
         return {
             "ui_payload": "Finalizing response",
@@ -211,7 +204,7 @@ class Orchestrator:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.gpt_120b.with_structured_output(
+        llm: Runnable = self.complex.with_structured_output(
             schema=AnalysisOrchestration,
             method="json_schema"
         )
@@ -264,7 +257,7 @@ class Orchestrator:
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
+        llm_output: AIMessage = self.basic.invoke(llm_input)
 
         return {
             "ui_payload": "Finalizing response",
@@ -309,7 +302,7 @@ class Orchestrator:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.gpt_120b.with_structured_output(
+        llm: Runnable = self.complex.with_structured_output(
             schema=ComputationPlanning,
             method="json_schema"
         )
@@ -378,7 +371,7 @@ class Orchestrator:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.gpt_120b.with_structured_output(
+        llm: Runnable = self.complex.with_structured_output(
             schema=Observation,
             method="json_schema"
         )
@@ -424,7 +417,7 @@ class Orchestrator:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.gpt_120b.with_structured_output(
+        llm: Runnable = self.complex.with_structured_output(
             schema=ComputationPlanning,
             method="json_schema"
         )
@@ -454,7 +447,7 @@ class Orchestrator:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.gpt_120b.with_structured_output(
+        llm: Runnable = self.complex.with_structured_output(
             schema=ComputationPlanning,
             method="json_schema"
         )
@@ -484,7 +477,7 @@ class Orchestrator:
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
+        llm_output: AIMessage = self.complex.invoke(llm_input)
 
         return {
             "ui_payload": "Finalizing response",
@@ -504,7 +497,7 @@ class Orchestrator:
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.gpt_120b.invoke(llm_input)
+        llm_output: AIMessage = self.basic.invoke(llm_input)
 
         turn_num = runtime.context.turn_num + 1
 

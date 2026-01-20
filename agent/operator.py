@@ -30,9 +30,9 @@ from pandas.errors import EmptyDataError
 # internal
 from .runtime import Context
 from .state import State
-from context.database import DatabaseManager
 from context.datasets import working_dataset_path
-from context.models import (
+from memory.database import DatabaseManager
+from memory.models import (
     ChatHistory,
     ChatHistoryShow,
     ShortMemory
@@ -208,7 +208,7 @@ class Operator:
             context_prompt: str = "\n\nThe step-by-step computational plan:"
 
             for step in state["computation_planning"].steps:
-                context_prompt += f"\n{step.number}. {step.description} {step.rationale}" if not original else f"\n- {step}"
+                context_prompt += f"\n{step.number}. {step.description} {step}" if not original else f"\n- {step}"
 
             return context_prompt
 
