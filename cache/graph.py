@@ -15,13 +15,15 @@ from langchain_core.language_models import BaseChatModel
 from langgraph.graph.state import CompiledStateGraph
 
 # internal
-from .context import load_database_manager
+from .context import load_context_manager
 from .language_model import load_language_models
+from .memory import load_memory_manager
 from agent import (
     Graph,
     Context,
     State,
 )
+from context.database import ContextManager
 from context.system_prompts import (
     ANALYSIS_RESPONSE,
     ANALYSIS_ORCHESTRATION,
@@ -36,7 +38,7 @@ from context.system_prompts import (
     SELF_REFLECTION,
     SUMMARIZATION,
 )
-from memory.database import DatabaseManager
+from memory.database import MemoryManager
 from util import st_cache
 
 @st_cache("Loading graph", "resource")
@@ -47,13 +49,11 @@ def load_graph() -> CompiledStateGraph[State, Context]:
     This function returns a compiled graph structure used to
     coordinate agent behavior.
     """
-    database_manager: DatabaseManager = load_database_manager()
+    context_manager: ContextManager = load_context_manager()
+    memory_manager: MemoryManager = load_memory_manager()
     language_models: Dict[Literal["complex", "basic"], BaseChatModel] = load_language_models()
 
-    graph = Graph(
-        database_manager=database_manager,
-        language_models=language_models
-    )
+    graph = Graph(context_manager, memory_manager, language_models)
 
     return graph.build_graph()
 

@@ -1,5 +1,5 @@
 """
-Operational utilities for graph nodes.
+Operational utilities for graph.
 
 This module provides helper functions used by graph nodes to retrieve,
 transform, and assemble contextual information.
@@ -30,8 +30,9 @@ from pandas.errors import EmptyDataError
 # internal
 from .runtime import Context
 from .state import State
+from context.database import ContextManager
 from context.datasets import working_dataset_path
-from memory.database import DatabaseManager
+from memory.database import MemoryManager
 from memory.models import (
     ChatHistory,
     ChatHistoryShow,
@@ -39,11 +40,12 @@ from memory.models import (
 )
 
 class Operator:
-    def __init__(self, database_manager: DatabaseManager) -> None:
+    def __init__(self, context_manager: ContextManager, memory_manager: MemoryManager) -> None:
         """
         Initialize the operator with access to persistent storage.
         """
-        self.database_manager: DatabaseManager = database_manager
+        self.context_manager: ContextManager = context_manager
+        self.memory_manager: MemoryManager = memory_manager
 
     def get_conversation_summary(self) -> str:
         """
@@ -52,7 +54,7 @@ class Operator:
         The summary is derived from stored short-term memory and is intended
         to supply historical context for downstream reasoning steps.
         """
-        short_memories: List[ShortMemory] = self.database_manager.index_short_memory()
+        short_memories: List[ShortMemory] = self.memory_manager.index_short_memory()
 
         if short_memories:
             context_prompt: str = "\n\nConversation history summarized by turn number:"
@@ -76,7 +78,7 @@ class Operator:
         if state["intent_comprehension"]:
             for turn_num in state["intent_comprehension"].relevant_turns:
                 params: ChatHistoryShow = ChatHistoryShow(turn_num=int(turn_num))
-                relevant_turn: List[ChatHistory] = self.database_manager.show_chat_history(params)
+                relevant_turn: List[ChatHistory] = self.memory_manager.show_chat_history(params)
 
                 for chat in relevant_turn:
                     if chat.role == "Human":
@@ -94,7 +96,7 @@ class Operator:
         by describing available tables, columns, and structural metadata.
         """
         context_prompt: str = "\n\nThe external database schema information:\n"
-        context_prompt += repr(self.database_manager.inspect_external_database())
+        context_prompt += repr(self.context_manager.inspect_external_database())
 
         return context_prompt
 
@@ -141,7 +143,7 @@ class Operator:
         This information provides historical context for analytical continuity,
         especially when subsequent reasoning depends on prior data extraction.
         """
-        if sql_query := self.database_manager.show_last_saved_sql_query():
+        if sql_query := self.memory_manager.show_last_saved_sql_query():
             context_prompt: str = "\n\nThe dataframe representation above is previously extracted from external database using the following SQL query:\n"
             context_prompt += str(sql_query)
 

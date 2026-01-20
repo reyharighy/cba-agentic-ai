@@ -3,8 +3,8 @@ Application entry point.
 """
 # internal
 from application import UserInterface
-from memory.database import DatabaseManager
-from cache import cold_start, load_database_manager
+from memory.database import MemoryManager
+from cache import cold_start, load_memory_manager
 
 def main() -> None:
     """
@@ -14,8 +14,8 @@ def main() -> None:
     dependencies, and starts the primary user interface loop.
     """
     cold_start()
-    database_manager: DatabaseManager = load_database_manager()
-    app: UserInterface = UserInterface(database_manager)
+    memory_manager: MemoryManager = load_memory_manager()
+    app: UserInterface = UserInterface(memory_manager)
     app.run()
 
 if __name__ == "__main__":

@@ -12,12 +12,10 @@
 <img src="https://img.shields.io/badge/Streamlit-FF4B4B.svg?style=flat&logo=Streamlit&logoColor=white">
 <img src="https://img.shields.io/badge/LangChain-1C3C3C.svg?style=flat&logo=LangChain&logoColor=white">
 <img src="https://img.shields.io/badge/LangGraph-4B5563.svg?style=flat">
-<img src="https://img.shields.io/badge/Pydantic-E92063.svg?style=flat&logo=Pydantic&logoColor=white">
-<br>
+
 <img src="https://img.shields.io/badge/Docker-2496ED.svg?style=flat&logo=Docker&logoColor=white">
 <img src="https://img.shields.io/badge/PostgreSQL-4169E1.svg?style=flat&logo=PostgreSQL&logoColor=white">
 <img src="https://img.shields.io/badge/SQLAlchemy-D71F00.svg?style=flat&logo=SQLAlchemy&logoColor=white">
-<img src="https://img.shields.io/badge/Ruff-D7FF64.svg?style=flat&logo=Ruff&logoColor=black">
 
 </div>
 
@@ -146,21 +144,16 @@ High-level structure:
 
 ```sh
 .
-├── application/ # Streamlit UI & user interaction
-├── cache/ # Cold start & caching utilities
-├── context/ # Internal datasets & contextual memory
-├── docker_scripts/ # External DB seeding & synthetic data factory
-├── graph/ # LangGraph nodes, runtime, orchestration
-├── schema/ # Pydantic schemas for LLM structured outputs
-├── schema/ # Custom Streamlit decorator
-└── main.py # Application entrypoint
+├── agent/ # Stateful graph built with LangGraph
+├── application/ # User interface application served by Streamlit
+├── cache/ # Caching mechanisms for several data and resource
+├── context/ # Objects that are interacted with by agent
+├── docker_script/ # Initialization script to run, mainly to populate external database for testing
+├── language_model/ # Language model used by agentic system that provides BaseChatModel interface from langchain_core
+├── memory/ # Serves the ability of the agent to have a memory when processing request
+├── util/ # Base utility to help developing the system
+└── main.py # Application Entrypoint
 ```
-
-Key ideas:
-
-- **`schema/`** defines strict contracts for LLM outputs.
-- **`graph/`** encodes reasoning and execution as a stateful graph.
-- **`docker_scripts/`** exists solely to provision external business data.
 
 ## Features
 

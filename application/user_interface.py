@@ -27,24 +27,27 @@ from agent import (
     Context,
     State,
 )
-from agent.stages import enable_interactive_graph
+from agent.stages import (
+    enable_interactive_graph,
+    images_source_path,
+)
 from cache import (
     load_graph,
     load_prompts_set,
     load_sandbox_bootstrap,
 )
-from memory.database import DatabaseManager
+from memory.database import MemoryManager
 from memory.models import ChatHistory
 
 class UserInterface:
-    def __init__(self, database_manager: DatabaseManager) -> None:
+    def __init__(self, memory_manager: MemoryManager) -> None:
         """
         Initialize the user interface with required persistence dependencies.
 
         The database manager is used exclusively for retrieving chat history.
         """
         self.session_memory: SessionMemory = SessionMemory()
-        self.database_manager: DatabaseManager = database_manager
+        self.memory_manager: MemoryManager = memory_manager
 
     def run(self) -> None:
         """
@@ -60,7 +63,7 @@ class UserInterface:
         Initialize Streamlit session state and application configuration.
         """
         if st.session_state.get("init_app") is None:
-            self.database_manager.init_internal_database()
+            self.memory_manager.init_internal_database()
             st.session_state["success_toast"] = False
             st.session_state["error_toast"] = False
             st.session_state["punt_toast"] = False
@@ -81,7 +84,7 @@ class UserInterface:
         Chat turns are grouped and displayed sequentially to reflect prior
         interactions within the current session.
         """
-        chat_history: List[ChatHistory] = self.database_manager.index_chat_history()
+        chat_history: List[ChatHistory] = self.memory_manager.index_chat_history()
         self.session_memory.turn_num = max(chat.turn_num for chat in chat_history) if chat_history else 0
 
         if self.session_memory.turn_num > 0:
@@ -258,7 +261,7 @@ class UserInterface:
         state is available, it renders the initial entry point of the graph.
         """
         graph_placeholder.image(
-            image=f"./graph/stages/{node_state["next_node"]}.png" if node_state else './graph/stages/intent_comprehension.png',
+            image=f"{images_source_path}/{node_state["next_node"]}.png" if node_state else f'{images_source_path}/intent_comprehension.png',
             width="stretch",
         )
 

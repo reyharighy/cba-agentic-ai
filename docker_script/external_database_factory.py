@@ -26,7 +26,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
 
 # internal
-from memory.database.config import external_db_url
+from context.database.config import external_db_url
 
 def main() -> None:
     if os.getenv("ENABLE_EXTERNAL_DB_SEEDING", "true").lower() != "true":
@@ -54,7 +54,7 @@ def main() -> None:
 
     metadata.create_all(engine)
 
-    df: DataFrame = pd.read_csv("./docker_scripts/synthetic_data.csv")
+    df: DataFrame = pd.read_csv("./docker_script/synthetic_data.csv")
     df["created_at"] = pd.to_datetime(df["created_at"])
 
     records: List[Dict[str, Any]] = [

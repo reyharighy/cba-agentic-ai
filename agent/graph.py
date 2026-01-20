@@ -1,11 +1,9 @@
 """
 Execution coordination layer for the graph-based workflow.
 
-This module defines graph nodes that coordinate intent understanding,
-routing decisions, analytical planning, sandboxed computation,
-self-correction, and response synthesis. Each public method represents
-a LangGraph node responsible for invoking language models, updating
-execution state, or directing control flow.
+This module defines graph nodes and edges that orchestrate analytical
+process. Each public method represents a LangGraph node responsible for 
+certain responsibility that accomplishes agentic workflow altogether.
 """
 # standard
 import sys
@@ -38,6 +36,7 @@ from langgraph.types import Command
 from .operator import Operator
 from .runtime import Context
 from .state import State
+from context.database import ContextManager
 from context.datasets import working_dataset_path
 from language_model.schema import (
     AnalysisOrchestration,
@@ -46,19 +45,20 @@ from language_model.schema import (
     Observation,
     RequestClassification,
 )
-from memory.database import DatabaseManager
+from memory.database import MemoryManager
 from memory.models import (
     ChatHistoryCreate,
     ShortMemoryCreate
 )
 
 class Graph:
-    def __init__(self, database_manager: DatabaseManager, language_models: Dict[Literal["complex", "basic"], BaseChatModel]) -> None:
+    def __init__(self, context_manager: ContextManager, memory_manager: MemoryManager, language_models: Dict[Literal["complex", "basic"], BaseChatModel]) -> None:
         """
         Initialize the orchestrator with a graph definition.
         """
-        self.database_manager: DatabaseManager = database_manager
-        self.operator: Operator = Operator(database_manager)
+        self.context_manager: ContextManager = context_manager
+        self.memory_manager: MemoryManager = memory_manager
+        self.operator: Operator = Operator(context_manager, memory_manager)
         self.complex: BaseChatModel = language_models["complex"]
         self.basic: BaseChatModel = language_models["basic"]
 
@@ -275,7 +275,7 @@ class Graph:
         if state["analysis_orchestration"]:
             if state["analysis_orchestration"].sql_query:
                 sql_query: str = state["analysis_orchestration"].sql_query
-                self.database_manager.extract_external_database(sql_query)
+                self.context_manager.extract_external_database(sql_query)
 
                 return {
                     "ui_payload": "Creating analytical computation plan",
@@ -405,8 +405,8 @@ class Graph:
         """
         Correct computational errors encountered during execution.
 
-        This node regenerates a corrected computation plan based on
-        execution errors observed in the sandbox environment.
+        This node regenerates a corrected Python code in the computation plan
+        based on execution errors observed in the sandbox environment.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = "\n\nContext information is provided below."
@@ -497,7 +497,7 @@ class Graph:
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.basic.invoke(llm_input)
+        llm_output: AIMessage = self.complex.invoke(llm_input)
 
         turn_num = runtime.context.turn_num + 1
 
@@ -507,7 +507,7 @@ class Graph:
             content=str(state["messages"][0].content)
         )
 
-        self.database_manager.store_chat_history(create_chat_history_params())
+        self.memory_manager.store_chat_history(create_chat_history_params())
 
         create_chat_history_params = ChatHistoryCreate(
             turn_num=turn_num,
@@ -515,7 +515,7 @@ class Graph:
             content=str(state["messages"][1].content)
         )
 
-        self.database_manager.store_chat_history(create_chat_history_params())
+        self.memory_manager.store_chat_history(create_chat_history_params())
 
         create_short_memory_params: ShortMemoryCreate = ShortMemoryCreate(
             turn_num=turn_num,
@@ -523,7 +523,7 @@ class Graph:
             sql_query=state["analysis_orchestration"].sql_query if state["analysis_orchestration"] else None
         )
 
-        self.database_manager.store_short_memory(create_short_memory_params())
+        self.memory_manager.store_short_memory(create_short_memory_params())
 
         return {"summarization": llm_output}
 

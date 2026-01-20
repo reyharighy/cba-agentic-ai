@@ -5,22 +5,18 @@ This module provides cached access to context-related resources
 used across different parts of the application.
 """
 # internal
-from memory.database import (
-    DatabaseManager,
-    internal_db_url,
+from context.database import (
+    ContextManager,
     external_db_url,
 )
 from util import st_cache
 
-@st_cache("Loading database manager", "resource")
-def load_database_manager() -> DatabaseManager:
+@st_cache("Loading context manager", "resource")
+def load_context_manager() -> ContextManager:
     """
-    Load the database manager instance.
+    Load the context manager instance.
 
-    This function provides access to the database manager used by
-    the application.
+    This function provides access to the external database used by
+    the system to interact with business data.
     """
-    return DatabaseManager(
-        internal_db_url=internal_db_url,
-        external_db_url=external_db_url
-    )
+    return ContextManager(external_db_url)
