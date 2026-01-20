@@ -21,7 +21,7 @@ from pydantic import (
 
 class IntentComprehension(BaseModel):
     """
-    Identify which conversation turns are relevant for downstream reasoning.
+    Determination of conversational context relevance.
     """
     relevant_turns: List[str] = Field(
         ...,
@@ -29,12 +29,12 @@ class IntentComprehension(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Short explanation of why these turns were selected"
+        description="Clear and detailed explanation of why these turns were selected"
     )
 
 class RequestClassification(BaseModel):
     """
-    Identify which route category is relevant for the next process.
+    Routing decision for request handling.
     """
     route: Literal["analysis_orchestration", "direct_response", "punt_response"] = Field(
         ...,
@@ -42,12 +42,12 @@ class RequestClassification(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Short explanation of why this route category is selected"
+        description="Clear and detailed explanation of why this route category is selected"
     )
 
 class AnalysisOrchestration(BaseModel):
     """
-    Identify which route category is relevant for the next process.
+    Analytical execution planning and routing decision.
     """
     route: Literal["data_unavailability", "data_retrieval", "computation_planning"] = Field(
         ...,
@@ -59,16 +59,16 @@ class AnalysisOrchestration(BaseModel):
     )
     syntax_rationale: str = Field(
         ...,
-        description="Short explanation of why the generated SQL query is valid and appropriate"
+        description="Clear and detailed explanation of why the generated SQL query is valid and appropriate"
     )
     rationale: str = Field(
         ...,
-        description="Short explanation of why this route category is selected"
+        description="Clear and detailed explanation of why this route category is selected"
     )
 
 class Step(BaseModel):
     """
-    Step item should be taken in a computation planning.
+    Single executable step in an analytical computation plan.
     """
     number: int = Field(
         ...,
@@ -77,7 +77,7 @@ class Step(BaseModel):
     )
     description: str = Field(
         ...,
-        description="What this step does in plain language. Use English"
+        description="What this step does in plain English"
     )
     input_df: Optional[str] = Field(
         ...,
@@ -89,16 +89,16 @@ class Step(BaseModel):
     )
     python_code: str = Field(
         ...,
-        description="Python code in order to execute based-on description step"
+        description="Python code in order to execute based on description step"
     )
     rationale: str = Field(
         ...,
-        description="Short explanation of why this step is necessary"
+        description="Clear and detailed explanation of why this step is necessary"
     )
 
 class ComputationPlanning(BaseModel):
     """
-    List of steps that should be taken in order to answer the user's request.
+    Executable analytical computation plan.
     """
     analysis_type: Literal["descriptive", "diagnostic", "predictive", "inferential"] = Field(
         ...,
@@ -110,12 +110,12 @@ class ComputationPlanning(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Why this procedure satisfies the user's request"
+        description="Clear and detailed explanation of why this procedure satisfies the user's request"
     )
 
 class Observation(BaseModel):
     """
-    Docstring for Observation
+    Evaluation of executable analytical computation plan results.
     """
     status: Literal["sufficient", "insufficient"] = Field(
         ...,
@@ -123,6 +123,6 @@ class Observation(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Clear, concise explanation of why the execution result is or is not sufficient to answer the user's request"
+        description="Clear and detailed explanation of why the execution result sufficient or not to answer the user's request"
     )
     
