@@ -14,3 +14,6 @@ wheels/
 
 # Notebooks
 .notebooks
+
+# runtime artifacts
+context/datasets/dataset.csv
