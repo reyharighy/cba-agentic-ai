@@ -93,6 +93,12 @@ def load_sandbox_bootstrap() -> Dict[Literal["descriptive", "diagnostic", "predi
     scipy: str = "import scipy"
     sklearn: str = "import sklearn"
     df_load: str = "df = pd.read_csv('dataset.csv')"
+    df_load += '\n' + "for column in df.columns:"
+    df_load += '\n\t' + "if pd.api.types.is_object_dtype(df[column]):"
+    df_load += '\n\t\t' + "try:"
+    df_load += '\n\t\t\t' + "df[column] = pd.to_datetime(df[column])"
+    df_load += '\n\t\t' + "except Exception as _:"
+    df_load += '\n\t\t\t' + "pass"
 
     descriptive: str = pandas + '\n' + numpy + '\n' + df_load
     diagnostic: str = pandas + '\n' + numpy + '\n' + scipy + '\n' + df_load
