@@ -51,7 +51,7 @@ def load_graph() -> CompiledStateGraph[State, Context]:
     """
     context_manager: ContextManager = load_context_manager()
     memory_manager: MemoryManager = load_memory_manager()
-    language_models: Dict[Literal["complex", "basic"], BaseChatModel] = load_language_models()
+    language_models: Dict[Literal["low", "medium", "high"], BaseChatModel] = load_language_models()
 
     graph = Graph(context_manager, memory_manager, language_models)
 

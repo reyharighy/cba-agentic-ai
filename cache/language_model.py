@@ -14,13 +14,14 @@ from langchain_core.language_models import BaseChatModel
 
 # internal
 from language_model.provider import (
-    groq_gpt_120b,
-    groq_kimi_k2,
+    groq_gpt_120b_low,
+    groq_gpt_120b_medium,
+    groq_gpt_120b_high,
 )
 from util import st_cache
 
 @st_cache("Loading language models", "resource")
-def load_language_models() -> Dict[Literal["complex", "basic"], BaseChatModel]:
+def load_language_models() -> Dict[Literal["low", "medium", "high"], BaseChatModel]:
     """
     Load the language model instances.
 
@@ -29,6 +30,7 @@ def load_language_models() -> Dict[Literal["complex", "basic"], BaseChatModel]:
     models divided based on complexity task each node processes.
     """
     return {
-        "complex": groq_gpt_120b,
-        "basic": groq_kimi_k2
+        "low": groq_gpt_120b_medium,
+        "medium": groq_gpt_120b_low,
+        "high": groq_gpt_120b_high,
     }

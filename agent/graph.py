@@ -52,15 +52,21 @@ from memory.models import (
 )
 
 class Graph:
-    def __init__(self, context_manager: ContextManager, memory_manager: MemoryManager, language_models: Dict[Literal["complex", "basic"], BaseChatModel]) -> None:
+    def __init__(
+        self,
+        context_manager: ContextManager,
+        memory_manager: MemoryManager,
+        language_models: Dict[Literal["low", "medium", "high"], BaseChatModel]
+    ) -> None:
         """
         Initialize the orchestrator with a graph definition.
         """
         self.context_manager: ContextManager = context_manager
         self.memory_manager: MemoryManager = memory_manager
         self.operator: Operator = Operator(context_manager, memory_manager)
-        self.complex: BaseChatModel = language_models["complex"]
-        self.basic: BaseChatModel = language_models["basic"]
+        self.low: BaseChatModel = language_models["low"]
+        self.medium: BaseChatModel = language_models["medium"]
+        self.high: BaseChatModel = language_models["high"]
 
         self.graph_builder: StateGraph[State, Context] = StateGraph(
             state_schema=State,
@@ -81,7 +87,7 @@ class Graph:
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
 
-        llm: Runnable = self.basic.with_structured_output(
+        llm: Runnable = self.low.with_structured_output(
             schema=IntentComprehension,
             method="json_schema"
         )
@@ -109,7 +115,7 @@ class Graph:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.basic.with_structured_output(
+        llm: Runnable = self.medium.with_structured_output(
             schema=RequestClassification,
             method="json_schema"
         )
@@ -160,7 +166,7 @@ class Graph:
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.basic.invoke(llm_input)
+        llm_output: AIMessage = self.medium.invoke(llm_input)
 
         return {
             "ui_payload": "Finalizing response",
@@ -178,7 +184,7 @@ class Graph:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
-        llm_output: AIMessage = self.basic.invoke(llm_input)
+        llm_output: AIMessage = self.low.invoke(llm_input)
 
         return {
             "ui_payload": "Finalizing response",
@@ -204,7 +210,7 @@ class Graph:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.complex.with_structured_output(
+        llm: Runnable = self.medium.with_structured_output(
             schema=AnalysisOrchestration,
             method="json_schema"
         )
@@ -257,7 +263,7 @@ class Graph:
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.basic.invoke(llm_input)
+        llm_output: AIMessage = self.low.invoke(llm_input)
 
         return {
             "ui_payload": "Finalizing response",
@@ -302,7 +308,7 @@ class Graph:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.complex.with_structured_output(
+        llm: Runnable = self.medium.with_structured_output(
             schema=ComputationPlanning,
             method="json_schema"
         )
@@ -371,7 +377,7 @@ class Graph:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.complex.with_structured_output(
+        llm: Runnable = self.high.with_structured_output(
             schema=Observation,
             method="json_schema"
         )
@@ -417,7 +423,7 @@ class Graph:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.complex.with_structured_output(
+        llm: Runnable = self.medium.with_structured_output(
             schema=ComputationPlanning,
             method="json_schema"
         )
@@ -447,7 +453,7 @@ class Graph:
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.complex.with_structured_output(
+        llm: Runnable = self.medium.with_structured_output(
             schema=ComputationPlanning,
             method="json_schema"
         )
@@ -477,7 +483,7 @@ class Graph:
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.complex.invoke(llm_input)
+        llm_output: AIMessage = self.medium.invoke(llm_input)
 
         return {
             "ui_payload": "Finalizing response",
@@ -497,7 +503,7 @@ class Graph:
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.complex.invoke(llm_input)
+        llm_output: AIMessage = self.medium.invoke(llm_input)
 
         turn_num = runtime.context.turn_num + 1
 
