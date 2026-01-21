@@ -108,6 +108,9 @@ class Operator:
         and summarizes column types along with representative values to guide
         analytical reasoning.
         """
+        if not working_dataset_path.exists():
+            working_dataset_path.touch()
+
         try:
             context_prompt: str = "\n\nDataframe schema and sample values in each columns:"
             col_value_dict: Dict[str, tuple[str, Any]] = {}
@@ -136,7 +139,7 @@ class Operator:
         except EmptyDataError as _:
             return "\n\nThere is no dataframe object representation."
 
-    def get_last_saved_sql_query(self, state: State) -> str:
+    def get_last_saved_sql_query(self) -> str:
         """
         Retrieve the most recently persisted SQL query.
 

@@ -198,7 +198,7 @@ class Graph:
         context_prompt: str = "\n\nContext information is provided below."
         context_prompt += self.operator.get_database_schema_and_sample_values()
         context_prompt += self.operator.get_dataframe_schema_and_sample_values()
-        context_prompt += self.operator.get_last_saved_sql_query(state)
+        context_prompt += self.operator.get_last_saved_sql_query()
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
         llm_input += self.operator.get_relevant_conversation(state)

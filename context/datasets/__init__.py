@@ -6,9 +6,7 @@ datasets used during application execution are stored.
 """
 from pathlib import Path
 
-_BASE_DIR = Path(__file__).resolve().parent
-
-working_dataset_path: str = str(_BASE_DIR / "dataset.csv")
+working_dataset_path: Path = Path(__file__).resolve().parent / "dataset.csv"
 
 __all__ = [
     "working_dataset_path"

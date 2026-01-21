@@ -9,14 +9,8 @@ give information which node is running when graph invoked.
 import os
 from pathlib import Path
 
-if os.getenv("ENABLE_INTERACTIVE_GRAPH", "false").lower() == "true":
-    enable_interactive_graph: bool = True
-else:
-    enable_interactive_graph: bool = False
-
-_BASE_DIR = Path(__file__).resolve().parent
-
-images_source_path: str = str(_BASE_DIR)
+enable_interactive_graph: bool = True if os.getenv("ENABLE_INTERACTIVE_GRAPH", "false").lower() == "true" else False
+images_source_path: str = str(Path(__file__).resolve().parent)
 
 __all__ = [
     "enable_interactive_graph",

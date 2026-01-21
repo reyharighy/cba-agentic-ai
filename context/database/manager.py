@@ -5,7 +5,6 @@ This module defines a unified interface for interacting with
 external data sources used by the application.
 """
 # internal
-from pathlib import Path
 from typing import (
     Any,
     Dict,
@@ -116,9 +115,6 @@ class ContextManager:
         This method executes a query against an external data source and
         materializes the result into a dataset usable by the system.
         """
-        output_path: Path = Path(working_dataset_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
         with self.external.begin() as connection:
             df = pd.read_sql(text(statement), connection)
-            df.to_csv(output_path, index=False, encoding="utf-8")
+            df.to_csv(working_dataset_path, index=False, encoding="utf-8")
