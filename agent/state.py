@@ -13,7 +13,6 @@ from typing import (
 
 # third-party
 from e2b_code_interpreter import Execution
-from langchain_core.messages import AIMessage
 from langgraph.graph import MessagesState
 
 # internal

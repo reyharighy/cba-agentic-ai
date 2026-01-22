@@ -33,11 +33,10 @@ from langgraph.runtime import Runtime
 from langgraph.types import Command
 
 # internal
-from .operator import Operator
+from .composer import Composer
 from .runtime import Context
 from .state import State
 from context.database import ContextManager
-from context.datasets import working_dataset_path
 from language_model.schema import (
     IntentComprehension,
     RequestClassification,
@@ -51,10 +50,6 @@ from language_model.schema import (
     InfographicObservation
 )
 from memory.database import MemoryManager
-from memory.models import (
-    ChatHistoryCreate,
-    ShortMemoryCreate
-)
 
 class Graph:
     def __init__(
@@ -68,10 +63,10 @@ class Graph:
         """
         self.context_manager: ContextManager = context_manager
         self.memory_manager: MemoryManager = memory_manager
-        self.operator: Operator = Operator(context_manager, memory_manager)
-        self.low: BaseChatModel = language_models["low"]
-        self.medium: BaseChatModel = language_models["medium"]
-        self.high: BaseChatModel = language_models["high"]
+        self.composer: Composer = Composer(context_manager, memory_manager)
+        self.low_model: BaseChatModel = language_models["low"]
+        self.medium_model: BaseChatModel = language_models["medium"]
+        self.high_model: BaseChatModel = language_models["high"]
 
         self.graph_builder: StateGraph[State, Context] = StateGraph(
             state_schema=State,
@@ -79,7 +74,19 @@ class Graph:
         )
 
     def intent_comprehension(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
-        serialized_output: IntentComprehension = IntentComprehension.model_validate({})
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.composer.get_conversation_summary()
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
+        llm_input: Sequence = [system_message] + state["messages"]
+
+        llm: Runnable = self.low_model.with_structured_output(
+            schema=IntentComprehension,
+            method="json_schema"
+        )
+
+        llm_output = llm.invoke(llm_input)
+        serialized_output: IntentComprehension = IntentComprehension.model_validate(llm_output)
 
         return {
             "ui_payload": "",
@@ -88,7 +95,19 @@ class Graph:
         }
 
     def request_classification(self, state: State, runtime: Runtime[Context]) -> Command[Literal["punt_response", "analytical_requirement"]]:
-        serialized_output: RequestClassification = RequestClassification.model_validate({})
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        system_message: SystemMessage = SystemMessage(system_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+
+        llm: Runnable = self.low_model.with_structured_output(
+            schema=RequestClassification,
+            method="json_schema"
+        )
+
+        llm_output = llm.invoke(llm_input)
+        serialized_output: RequestClassification = RequestClassification.model_validate(llm_output)
 
         if serialized_output.request_is_business_analytical_domain:
             return Command(
@@ -110,9 +129,15 @@ class Graph:
         )
 
     def punt_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        system_message: SystemMessage = SystemMessage(system_prompt)
+        llm_input: Sequence = [system_message] + state["messages"]
+        llm_output: AIMessage = self.low_model.invoke(llm_input)
+
         return {
             "ui_payload": "",
-            "messages": []
+            "next_node": None,
+            "messages": [llm_output]
         }
 
     def analytical_requirement(self, state: State, runtime: Runtime[Context]) -> Command[Literal["direct_response", "data_availability"]]:
