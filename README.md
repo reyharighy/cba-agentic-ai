@@ -182,14 +182,40 @@ High-level structure:
 
 ⚠️ **Work in Progress**
 
+This project is under active development and **major architectural changes are currently happening in a separate branch**.
+
 Current focus:
 
-- Core reasoning pipeline stability
-- Schema design and validation
-- Runtime observability
-- Developer ergonomics
+- Infographic / visualization output pipeline
 
-Not production-ready. APIs, structure, and assumptions may change.
+Notes:
+
+- Not production-ready
+- APIs, internal structure, and execution flow may change
+- The main branch may not reflect the latest design decisions
+
+For ongoing development and latest progress, please refer to the active development branch: `binary-responsibility-agent-graph`.
+
+### Binary-Responsibilty Agent Graph
+
+<div align="center">
+  <img src="Binary-Responsibility Agent Graph.png" width="75%" />
+</div>
+
+The current development branch introduces a revised agent graph design with the following principles:
+
+- Each node has at most two outgoing paths, keeping decision logic local and predictable
+- Each node has a single, well-defined responsibility, reducing prompt complexity and error propagation
+- Analytical reasoning and infographic generation are explicitly separated, allowing visualization to remain optional and downstream
+- Planning–execution–observation loops are applied consistently across analysis and visualization phases
+
+The goal is not to add complexity, but to:
+
+- simplify reasoning per node
+- improve debuggability
+- enable downstream extensions (e.g. visualization) without destabilizing core analysis where smaller, focused reasoning steps are more reliable than large, multi-purpose nodes.
+
+⚠️ This design is under active iteration and currently lives in a separate development branch.
 
 ## Getting Started
 
