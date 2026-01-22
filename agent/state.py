@@ -18,11 +18,17 @@ from langgraph.graph import MessagesState
 
 # internal
 from language_model.schema import (
-    AnalysisOrchestration,
-    ComputationPlanning,
     IntentComprehension,
-    Observation,
     RequestClassification,
+    AnalyticalRequirement,
+    DataAvailability,
+    DataRetrievalPlanning,
+    DataRetrievalObservation,
+    AnalyticalPlanning,
+    AnalyticalObservation,
+    InfographicRequirement,
+    InfographicPlanning,
+    InfographicObservation
 )
 
 class State(MessagesState):
@@ -38,8 +44,16 @@ class State(MessagesState):
     next_node: Optional[str]
     intent_comprehension: Optional[IntentComprehension]
     request_classification: Optional[RequestClassification]
-    analysis_orchestration: Optional[AnalysisOrchestration]
-    computation_planning: Optional[ComputationPlanning]
-    execution: Optional[Execution]
-    observation: Optional[Observation]
-    summarization: Optional[AIMessage]
+    analytical_requirement: Optional[AnalyticalRequirement]
+    data_availability: Optional[DataAvailability]
+    data_retrival_planning: Optional[DataRetrievalPlanning]
+    data_retrival_execution: Optional[Execution]
+    data_retrival_observation: Optional[DataRetrievalObservation]
+    analytical_planning: Optional[AnalyticalPlanning]
+    analytical_plan_execution: Optional[Execution]
+    analytical_observation: Optional[AnalyticalObservation]
+    analytical_result: Optional[str]
+    infograhic_requirement: Optional[InfographicRequirement]
+    infographic_planning: Optional[InfographicPlanning]
+    infographic_plan_execution: Optional[Execution]
+    infographic_observation: Optional[InfographicObservation]

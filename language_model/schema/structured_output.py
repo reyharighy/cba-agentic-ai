@@ -21,54 +21,97 @@ from pydantic import (
 
 class IntentComprehension(BaseModel):
     """
-    Determination of conversational context relevance.
+    Docstring for IntentComprehension
     """
     relevant_turns: List[str] = Field(
         ...,
-        description="Ordered list of turn numbers that should be retrieved and inspected"
+        description="Ordered list of turn numbers that should be retrieved and inspected in order to help answering the user's request"
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why these turns were selected in English"
+        description="Clear and detailed explanation in English"
     )
 
 class RequestClassification(BaseModel):
     """
-    Routing decision for request handling.
+    Docstring for RequestClassification
     """
-    route: Literal["analysis_orchestration", "direct_response", "punt_response"] = Field(
+    request_is_business_analytical_domain: bool = Field(
         ...,
-        description="Route category that is selected based-on the current user's request"
+        description=(
+            "The value must be set to True if the user's request is within business analytical domain. "
+            "Otherwise, set the value to False."
+        )
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why this route category is selected in English"
+        description="Clear and detailed explanation in English"
     )
 
-class AnalysisOrchestration(BaseModel):
+class AnalyticalRequirement(BaseModel):
     """
-    Analytical execution planning and routing decision.
+    Docstring for AnalyticalRequirement
     """
-    route: Literal["data_unavailability", "data_retrieval", "computation_planning"] = Field(
+    analytical_process_is_required: bool = Field(
         ...,
-        description="Route category that is selected based-on the current user's request"
-    )
-    sql_query: Optional[str] = Field(
-        ...,
-        description="SQL query to execute if data_retrieval is required for the next process"
-    )
-    syntax_rationale: str = Field(
-        ...,
-        description="Clear and detailed explanation of why the generated SQL query is valid and appropriate"
+        description=(
+            "The value must be set to True if the user's request requires analytical process to the answer the user's request. "
+            "Otherwise, set the value to False."
+        )
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why this route category is selected in English"
+        description="Clear and detailed explanation in English"
     )
 
-class Step(BaseModel):
+class DataAvailability(BaseModel):
     """
-    Single executable step in an analytical computation plan.
+    Docstring for DataAvailability
+    """
+    data_is_available: bool = Field(
+        ...,
+        description=(
+            "The value must be set to True if the data is available in external database in order to answer the user's request"
+            "Otherwise, set the value to False."
+        )
+    )
+    rationale: str = Field(
+        ...,
+        description="Clear and detailed explanation in English"
+    )
+
+class DataRetrievalPlanning(BaseModel):
+    """
+    Docstring for DataRetrievalPlanning
+    """
+    sql_query: str = Field(
+        ...,
+        description="The SQL Query to execute on external database in order to extract and prepare data into dataframe before analytical execution"
+    )
+    rationale: str = Field(
+        ...,
+        description="Clear and detailed explanation in English"
+    )
+
+class DataRetrievalObservation(BaseModel):
+    """
+    Docstring for DataRetrievalObservation
+    """
+    result_is_sufficient: bool = Field(
+        ...,
+        description=(
+            "The value must be set to True if the execution result fulfils the data retrieval planning. "
+            "Otherwise, set the value to False."
+        )
+    )
+    rationale: str = Field(
+        ...,
+        description="Clear and detailed explanation in English"
+    )
+
+class AnalyticalStep(BaseModel):
+    """
+    Docstring for Step
     """
     number: int = Field(
         ...,
@@ -81,11 +124,11 @@ class Step(BaseModel):
     )
     input_df: Optional[str] = Field(
         ...,
-        description="Name of the input dataframe variable (e.g. df)"
+        description="Name of the input dataframe variable"
     )
     output_df: str = Field(
         ...,
-        description="Name of the output dataframe variable (e.g. df_filtered)"
+        description="Name of the output dataframe variable"
     )
     python_code: str = Field(
         ...,
@@ -93,36 +136,113 @@ class Step(BaseModel):
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why this step is necessary in English"
+        description="Clear and detailed explanation in English"
     )
 
-class ComputationPlanning(BaseModel):
+class AnalyticalPlanning(BaseModel):
     """
-    Executable analytical computation plan.
+    Docstring for AnalyticalPlanning
     """
     analysis_type: Literal["descriptive", "diagnostic", "predictive", "inferential"] = Field(
         ...,
-        description="Analysis type based on the current user's request"
+        description="Analysis type to take in order to answer the user's request"
     )
-    steps: List[Step] = Field(
+    plan: List[AnalyticalStep] = Field(
         ...,
-        description="Ordered list of computation steps"
+        description="Ordered list of analytical steps to take in order to answer the user's request"
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why this procedure satisfies the user's request in English"
+        description="Clear and detailed explanation in English"
     )
 
-class Observation(BaseModel):
+class AnalyticalObservation(BaseModel):
     """
-    Evaluation of executable analytical computation plan results.
+    Docstring for AnalyticalObservation
     """
-    status: Literal["sufficient", "insufficient"] = Field(
+    result_is_sufficient: bool = Field(
         ...,
-        description="Classification of whether the execution result satisfies the user's request or not"
+        description=(
+            "The value must be set to True if the execution result fulfils the analytical planning. "
+            "Otherwise, set the value to False."
+        )
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation of why the execution result sufficient or not to answer the user's request in English"
+        description="Clear and detailed explanation in English"
     )
-    
+
+class InfographicRequirement(BaseModel):
+    """
+    Docstring for InfographicRequirement
+    """
+    infographic_is_required: bool = Field(
+        ...,
+        description=(
+            "The value must be set to True if the infographics is required to enhance the analytical results. "
+            "Otherwise, set the value to False."
+        )
+    )
+    rationale: str = Field(
+        ...,
+        description="Clear and detailed explanation in English"
+    )
+
+class InfographicStep(BaseModel):
+    """
+    Docstring for Plot
+    """
+    number: int = Field(
+        ...,
+        ge=1,
+        description="Sequential step number, starting from 1"
+    )
+    description: str = Field(
+        ...,
+        description="What this step does in plain English"
+    )
+    input_df: Optional[str] = Field(
+        ...,
+        description="Name of the input dataframe variable"
+    )
+    output_graph_path: str = Field(
+        ...,
+        description="Path where the output graph is saved"
+    )
+    python_code: str = Field(
+        ...,
+        description="Python code in order to execute based on description step"
+    )
+    rationale: str = Field(
+        ...,
+        description="Clear and detailed explanation in English"
+    )
+
+class InfographicPlanning(BaseModel):
+    """
+    Docstring for InfographicPlanning
+    """
+    plan: List[InfographicStep] = Field(
+        ...,
+        description="Ordered list of infographic steps to take in order to enhance the analytical results"
+    )
+    rationale: str = Field(
+        ...,
+        description="Clear and detailed explanation in English"
+    )
+
+class InfographicObservation(BaseModel):
+    """
+    Docstring for InfographicObservation
+    """
+    result_is_sufficient: bool = Field(
+        ...,
+        description=(
+            "The value must be set to True if the execution result fulfils the infographic planning. "
+            "Otherwise, set the value to False."
+        )
+    )
+    rationale: str = Field(
+        ...,
+        description="Clear and detailed explanation in English"
+    )

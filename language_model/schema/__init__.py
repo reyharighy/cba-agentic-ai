@@ -6,17 +6,29 @@ the outputs produced by language models during node execution,
 ensuring predictable and machine-interpretable results.
 """
 from .structured_output import (
-    AnalysisOrchestration,
-    ComputationPlanning,
     IntentComprehension,
-    Observation,
     RequestClassification,
+    AnalyticalRequirement,
+    DataAvailability,
+    DataRetrievalPlanning,
+    DataRetrievalObservation,
+    AnalyticalPlanning,
+    AnalyticalObservation,
+    InfographicRequirement,
+    InfographicPlanning,
+    InfographicObservation
 )
 
 __all__ = [
-    "AnalysisOrchestration",
-    "ComputationPlanning",
     "IntentComprehension",
-    "Observation",
     "RequestClassification",
+    "AnalyticalRequirement",
+    "DataAvailability",
+    "DataRetrievalPlanning",
+    "DataRetrievalObservation",
+    "AnalyticalPlanning",
+    "AnalyticalObservation",
+    "InfographicRequirement",
+    "InfographicPlanning",
+    "InfographicObservation"
 ]
