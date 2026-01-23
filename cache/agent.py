@@ -25,18 +25,10 @@ from agent import (
 )
 from context.database import ContextManager
 from context.system_prompts import (
-    ANALYSIS_RESPONSE,
-    ANALYSIS_ORCHESTRATION,
-    COMPUTATION_PLANNING,
-    DATA_UNAVAILABILITY,
-    DIRECT_RESPONSE,
     INTENT_COMPREHENSION,
-    OBSERVATION,
-    PUNT_RESPONSE,
     REQUEST_CLASSIFICATION,
-    SELF_CORRECTION,
-    SELF_REFLECTION,
-    SUMMARIZATION,
+    PUNT_RESPONSE,
+    ANALYTICAL_REQUIREMENT,
 )
 from memory.database import MemoryManager
 from util import st_cache
@@ -66,18 +58,10 @@ def load_prompts_set() -> Dict[str, str]:
     within the agentic system.
     """
     return {
-        "analysis_response": ANALYSIS_RESPONSE,
-        "analysis_orchestration": ANALYSIS_ORCHESTRATION,
-        "computation_planning": COMPUTATION_PLANNING,
-        "data_unavailability": DATA_UNAVAILABILITY,
-        "direct_response": DIRECT_RESPONSE,
         "intent_comprehension": INTENT_COMPREHENSION,
-        "observation": OBSERVATION,
-        "punt_response": PUNT_RESPONSE,
         "request_classification": REQUEST_CLASSIFICATION,
-        "self_correction": SELF_CORRECTION,
-        "self_reflection": SELF_REFLECTION,
-        "summarization": SUMMARIZATION,
+        "punt_response": PUNT_RESPONSE,
+        "analytical_requirement": ANALYTICAL_REQUIREMENT,
     }
 
 @st_cache("Loading bootsrap code for sandbox environment", "data")

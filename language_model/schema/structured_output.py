@@ -21,7 +21,7 @@ from pydantic import (
 
 class IntentComprehension(BaseModel):
     """
-    Docstring for IntentComprehension
+    Captures which prior conversation turns are required to understand or fulfill the current user request.
     """
     relevant_turns: List[str] = Field(
         ...,
@@ -34,7 +34,7 @@ class IntentComprehension(BaseModel):
 
 class RequestClassification(BaseModel):
     """
-    Docstring for RequestClassification
+    Represents the result of classifying whether a user request falls within the business analytics domain.
     """
     request_is_business_analytical_domain: bool = Field(
         ...,
@@ -50,7 +50,7 @@ class RequestClassification(BaseModel):
 
 class AnalyticalRequirement(BaseModel):
     """
-    Docstring for AnalyticalRequirement
+    Represents a decision contract that determines whether answering the user's request requires an analytical process.
     """
     analytical_process_is_required: bool = Field(
         ...,

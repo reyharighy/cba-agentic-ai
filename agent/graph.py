@@ -141,7 +141,19 @@ class Graph:
         }
 
     def analytical_requirement(self, state: State, runtime: Runtime[Context]) -> Command[Literal["direct_response", "data_availability"]]:
-        serialized_output: AnalyticalRequirement = AnalyticalRequirement.model_validate({})
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        system_message: SystemMessage = SystemMessage(system_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+
+        llm: Runnable = self.low_model.with_structured_output(
+            schema=RequestClassification,
+            method="json_schema"
+        )
+
+        llm_output = llm.invoke(llm_input)
+        serialized_output: AnalyticalRequirement = AnalyticalRequirement.model_validate(llm_output)
 
         if serialized_output.analytical_process_is_required:
             return Command(

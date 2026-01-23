@@ -168,11 +168,19 @@ class UserInterface:
             next_node=None,
             intent_comprehension=None,
             request_classification=None,
-            analysis_orchestration=None,
-            computation_planning=None,
-            execution=None,
-            observation=None,
-            summarization=None
+            analytical_requirement=None,
+            data_availability=None,
+            data_retrival_planning=None,
+            data_retrival_execution=None,
+            data_retrival_observation=None,
+            analytical_planning=None,
+            analytical_plan_execution=None,
+            analytical_observation=None,
+            analytical_result=None,
+            infograhic_requirement=None,
+            infographic_planning=None,
+            infographic_plan_execution=None,
+            infographic_observation=None
         )
 
         graph_context: Context = Context(
