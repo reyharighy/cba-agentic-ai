@@ -75,8 +75,7 @@ class Graph:
 
     def intent_comprehension(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        context_prompt: str = "\n\nContext information is provided below."
-        context_prompt += self.composer.get_conversation_summary()
+        context_prompt: str = self.composer.get_conversation_summary_list()
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
 
@@ -130,7 +129,8 @@ class Graph:
 
     def punt_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        system_message: SystemMessage = SystemMessage(system_prompt)
+        context_prompt: str = self.composer.get_punt_response_rationale(state)
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
         llm_output: AIMessage = self.low_model.invoke(llm_input)
 
@@ -175,15 +175,28 @@ class Graph:
         )
 
     def direct_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        system_message: SystemMessage = SystemMessage(system_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+        llm_output: AIMessage = self.low_model.invoke(llm_input)
+
         return {
             "ui_payload": "",
             "next_node": "summarization",
-            "messages": []
+            "messages": [llm_output]
         }
 
     def data_availability(self, state: State, runtime: Runtime[Context]) -> Command[Literal["data_unavailability_response", "data_retrieval_planning"]]:
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = self.composer.get_database_schema_info()
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
         serialized_output: DataAvailability = DataAvailability.model_validate({})
-        
+
         if serialized_output.data_is_available:
             return Command(
                 goto="data_retrieval_planning",
@@ -204,10 +217,18 @@ class Graph:
         )
 
     def data_unavailability_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = self.composer.get_data_unavailability_response_rationale(state)
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+        llm_output: AIMessage = self.low_model.invoke(llm_input)
+
         return {
             "ui_payload": "",
             "next_node": "summarization",
-            "messages": []
+            "messages": [llm_output]
         }
 
     def data_retrieval_planning(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:

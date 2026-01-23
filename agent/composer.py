@@ -7,6 +7,7 @@ This module provides helper functions used by graph nodes to retrieve,
 transform, and assemble contextual information.
 """
 # standard
+import sys
 from typing import (
     List,
     Sequence,
@@ -36,7 +37,7 @@ class Composer:
         self.context_manager: ContextManager = context_manager
         self.memory_manager: MemoryManager = memory_manager
 
-    def get_conversation_summary(self) -> str:
+    def get_conversation_summary_list(self) -> str:
         """
         Construct a summarized view of prior conversation turns.
 
@@ -78,3 +79,47 @@ class Composer:
                         llm_input += [AIMessage(content=chat.content)]
 
         return llm_input
+
+    def get_punt_response_rationale(self, state: State) -> str:
+        """
+        Provide rationale to punt_response node.
+
+        The rational is a base for the node to response produced by request_classification
+        node in the previous process. Thus, it will help the response generated to be less
+        template.
+        """
+        if state["request_classification"]:
+            context_prompt: str = "\n\nThe rationale of why the user's request is not related to business analytics domain:\n"
+            context_prompt += state["request_classification"].rationale
+
+            return context_prompt
+
+        raise ValueError(f"'request_classification' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_database_schema_info(self) -> str:
+        """
+        Expose external database schema information.
+
+        This context is used to inform analytical planning and query generation
+        by describing available tables, columns, and structural metadata.
+        """
+        context_prompt: str = "\n\nThe external database schema information:\n"
+        context_prompt += repr(self.context_manager.inspect_external_database())
+
+        return context_prompt
+
+    def get_data_unavailability_response_rationale(self, state: State) -> str:
+        """
+        Provide rationale to data_unavailability_response node.
+
+        The rational is a base for the node to response produced by data_availability
+        node in the previous process. Thus, it will help the response generated to be align 
+        with contextual information of why the request can't be answered based on data
+        """
+        if state["data_availability"]:
+            context_prompt: str = "\n\nThe rationale of why the external database is unsupported to answer the user's request:\n"
+            context_prompt += state["data_availability"].rationale
+
+            return context_prompt
+
+        raise ValueError(f"'data_availability' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")

@@ -24,12 +24,6 @@ from agent import (
     State,
 )
 from context.database import ContextManager
-from context.system_prompts import (
-    INTENT_COMPREHENSION,
-    REQUEST_CLASSIFICATION,
-    PUNT_RESPONSE,
-    ANALYTICAL_REQUIREMENT,
-)
 from memory.database import MemoryManager
 from util import st_cache
 
@@ -48,21 +42,6 @@ def load_graph() -> CompiledStateGraph[State, Context]:
     graph = Graph(context_manager, memory_manager, language_models)
 
     return graph.build_graph()
-
-@st_cache("Loading prompts for graph context", "data")
-def load_prompts_set() -> Dict[str, str]:
-    """
-    Load system prompt definitions.
-
-    This function provides access to prompt content used
-    within the agentic system.
-    """
-    return {
-        "intent_comprehension": INTENT_COMPREHENSION,
-        "request_classification": REQUEST_CLASSIFICATION,
-        "punt_response": PUNT_RESPONSE,
-        "analytical_requirement": ANALYTICAL_REQUIREMENT,
-    }
 
 @st_cache("Loading bootsrap code for sandbox environment", "data")
 def load_sandbox_bootstrap() -> Dict[Literal["descriptive", "diagnostic", "predictive", "inferential"], str]:

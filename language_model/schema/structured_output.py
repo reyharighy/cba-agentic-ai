@@ -66,7 +66,7 @@ class AnalyticalRequirement(BaseModel):
 
 class DataAvailability(BaseModel):
     """
-    Docstring for DataAvailability
+    Indicates whether the required business data exists in the external database to support analytical processing for the user's request.
     """
     data_is_available: bool = Field(
         ...,

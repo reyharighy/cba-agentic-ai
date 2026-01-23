@@ -7,10 +7,12 @@ that are initialized once and reused across the system lifecycle.
 # internal
 from .agent import (
     load_graph,
-    load_prompts_set,
     load_sandbox_bootstrap,
 )
-from .context import load_context_manager
+from .context import (
+    load_context_manager,
+    load_prompts_set
+)
 from .language_model import load_language_models
 from .memory import load_memory_manager
 from util import st_cache
