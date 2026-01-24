@@ -8,6 +8,7 @@ external data sources used by the application.
 from typing import (
     Any,
     Dict,
+    Literal,
     List,
     Sequence,
     Optional,
@@ -28,6 +29,7 @@ from sqlalchemy import (
     inspect,
     text,
 )
+from sqlalchemy.exc import ProgrammingError
 
 # internal
 from context.datasets import working_dataset_path
@@ -42,7 +44,7 @@ class ContextManager:
         """
         self.external: Engine = create_engine(external_db_url)
 
-    def inspect_external_database(self) -> Dict[str, Union[List, Dict]]:
+    def inspect_external_database(self) -> Dict[Literal["tables", "columns"], Union[List, Dict]]:
         """
         Inspect the structure of the external database.
 
@@ -108,13 +110,16 @@ class ContextManager:
             "columns": table_columns
         }
 
-    def extract_external_database(self, statement: str) -> None:
+    def extract_external_database(self, statement: str) -> Optional[ValueError]:
         """
         Extract data from the external database.
 
         This method executes a query against an external data source and
         materializes the result into a dataset usable by the system.
         """
-        with self.external.begin() as connection:
-            df = pd.read_sql(text(statement), connection)
-            df.to_csv(working_dataset_path, index=False, encoding="utf-8")
+        try:
+            with self.external.begin() as connection:
+                df = pd.read_sql(text(statement), connection)
+                df.to_csv(working_dataset_path, index=False, encoding="utf-8")
+        except ProgrammingError as e:
+            return ValueError(str(e.orig))

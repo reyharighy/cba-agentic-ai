@@ -82,9 +82,9 @@ class DataAvailability(BaseModel):
 
 class DataRetrievalPlanning(BaseModel):
     """
-    Docstring for DataRetrievalPlanning
+    Defines a data extraction plan by generating a SQL query that retrieves raw data from an external database into an analytical workspace.
     """
-    sql_query: str = Field(
+    sql_query: Optional[str] = Field(
         ...,
         description="The SQL Query to execute on external database in order to extract and prepare data into dataframe before analytical execution"
     )
@@ -95,7 +95,7 @@ class DataRetrievalPlanning(BaseModel):
 
 class DataRetrievalObservation(BaseModel):
     """
-    Docstring for DataRetrievalObservation
+    Represents an evaluation of whether retrieved raw data is sufficient to support the intended downstream analytical process.
     """
     result_is_sufficient: bool = Field(
         ...,

@@ -20,6 +20,10 @@ from context.system_prompts import (
     DIRECT_RESPONSE,
     DATA_AVAILABILITY,
     DATA_UNAVAILABILITY_RESPONSE,
+    DATA_RETRIEVAL_PLANNING,
+    DATA_RETRIEVAL_PLANNING_FROM_DATA_RETRIEVAL_EXECUTION,
+    DATA_RETRIEVAL_PLANNING_FROM_DATA_RETRIEVAL_OBSERVATION,
+    DATA_RETRIEVAL_OBSERVATION,
 )
 from util import st_cache
 
@@ -49,4 +53,8 @@ def load_prompts_set() -> Dict[str, str]:
         "direct_response": DIRECT_RESPONSE,
         "data_availability": DATA_AVAILABILITY,
         "data_unavailability_response": DATA_UNAVAILABILITY_RESPONSE,
+        "data_retrieval_planning": DATA_RETRIEVAL_PLANNING,
+        "data_retrieval_planning_from_data_retrival_execution": DATA_RETRIEVAL_PLANNING_FROM_DATA_RETRIEVAL_EXECUTION,
+        "data_retrieval_planning_from_data_retrieval_observation": DATA_RETRIEVAL_PLANNING_FROM_DATA_RETRIEVAL_OBSERVATION,
+        "data_retrieval_observation": DATA_RETRIEVAL_OBSERVATION,
     }
