@@ -39,6 +39,7 @@ from .composer import Composer
 from .runtime import Context
 from .state import State
 from context.database import ContextManager
+from context.datasets import working_dataset_path
 from language_model.schema import (
     IntentComprehension,
     RequestClassification,
@@ -46,7 +47,8 @@ from language_model.schema import (
     DataAvailability,
     DataRetrievalPlanning,
     DataRetrievalObservation,
-    AnalyticalObservation,
+    AnalyticalPlanning,
+    AnalyticalPlanObservation,
     InfographicRequirement,
     InfographicPlanning,
     InfographicObservation
@@ -131,7 +133,7 @@ class Graph:
 
     def punt_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        context_prompt: str = self.composer.get_punt_response_rationale(state)
+        context_prompt: str = self.composer.get_punt_response_feedback(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
         llm_output: AIMessage = self.low_model.invoke(llm_input)
@@ -228,7 +230,7 @@ class Graph:
 
     def data_unavailability_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        context_prompt: str = self.composer.get_data_unavailability_response_rationale(state)
+        context_prompt: str = self.composer.get_data_unavailability_response_feedback(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
         llm_input += self.composer.get_relevant_conversation(state)
@@ -246,15 +248,14 @@ class Graph:
         context_prompt: str = ""
 
         if state["data_retrieval_planning"]:
+            context_prompt += self.composer.get_database_schema_info()
+            context_prompt += self.composer.get_last_generated_sql_query(state)
+
             if state["data_retrieval_execution"]:
-                system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name + "_from_data_retrieval_execution"]
-                context_prompt += self.composer.get_database_schema_info()
-                context_prompt += self.composer.get_last_generated_sql_query(state)
+                system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name + "_from_data_retrieval_execution"]                
                 context_prompt += self.composer.get_data_retrieval_execution_feedback(state)
             elif state["data_retrieval_observation"]:
                 system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name + "_from_data_retrieval_observation"]
-                context_prompt += self.composer.get_database_schema_info()
-                context_prompt += self.composer.get_last_generated_sql_query(state)
                 context_prompt += self.composer.get_dataframe_schema_info()
                 context_prompt += self.composer.get_data_retrieval_observation_feedback(state)
             else:
@@ -362,17 +363,56 @@ class Graph:
         )
 
     def analytical_planning(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
-        serialized_output: DataRetrievalPlanning = DataRetrievalPlanning.model_validate({})
+        system_prompt: str = ""
+        context_prompt: str = ""
+
+        if state["analytical_planning"]:
+            context_prompt += self.composer.get_dataframe_schema_info()
+            context_prompt += self.composer.get_last_generated_sql_query(state)
+            context_prompt += self.composer.get_analytical_plan(state, original=True)
+
+            if state["analytical_plan_execution"]:
+                system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name + "_from_analytical_plan_execution"]
+                context_prompt += self.composer.get_analytical_plan_execution_error(state)
+            elif state["analytical_plan_observation"]:
+                system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name + "_from_analytical_plan_observation"]
+                context_prompt += self.composer.get_analytical_plan_observation_feedback(state)
+            else:
+                raise ValueError("'analytical_planning' is triggered by feedback node. One of these following states should exist: 'analytical_plan_execution' or 'analytical_observation'")
+        else:
+            system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+            context_prompt += self.composer.get_dataframe_schema_info()
+            context_prompt += self.composer.get_last_generated_sql_query(state)
+
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+
+        llm: Runnable = self.low_model.with_structured_output(
+            schema=AnalyticalPlanning,
+            method="json_schema"
+        )
+
+        llm_output = llm.invoke(llm_input)
+        serialized_output: AnalyticalPlanning = AnalyticalPlanning.model_validate(llm_output)
 
         return {
             "ui_payload": "",
             "next_node": "analytical_plan_execution",
-            "analytical_planning": serialized_output
+            "analytical_planning": serialized_output,
+            "analytical_plan_execution": None,
+            "analytical_plan_observation": None,
         }
 
-    def analytical_plan_execution(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analytical_planning", "analytical_observation"]]:
+    def analytical_plan_execution(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analytical_planning", "analytical_plan_observation"]]:
         sandbox: Sandbox = Sandbox.create()
-        execution: Execution = sandbox.run_code("")
+
+        with open(working_dataset_path, "rb") as dataset:
+            sandbox.files.write('dataset.csv', dataset.read())
+
+        code: str = self.composer.get_generated_python_code(state, runtime)
+        execution: Execution = sandbox.run_code(code)
 
         if execution.error:
             return Command(
@@ -385,16 +425,34 @@ class Graph:
             )
 
         return Command(
-            goto="analytical_observation",
+            goto="analytical_plan_observation",
             update={
                 "ui_payload": "",
-                "next_node": "analytical_observation",
+                "next_node": "analytical_plan_observation",
                 "analytical_plan_execution": execution
             }
         )
 
-    def analytical_observation(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analytical_planning", "analytical_result"]]:
-        serialized_output: AnalyticalObservation = AnalyticalObservation.model_validate({})
+    def analytical_plan_observation(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analytical_planning", "analytical_result"]]:
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = "\n\nContext information is provided below."
+        context_prompt += self.composer.get_database_schema_info()
+        context_prompt += self.composer.get_last_generated_sql_query(state)
+        context_prompt += self.composer.get_dataframe_schema_info()
+        context_prompt += self.composer.get_analytical_plan(state)
+        context_prompt += self.composer.get_analytical_plan_execution_result(state)
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+
+        llm: Runnable = self.low_model.with_structured_output(
+            schema=AnalyticalPlanObservation,
+            method="json_schema"
+        )
+
+        llm_output = llm.invoke(llm_input)
+        serialized_output: AnalyticalPlanObservation = AnalyticalPlanObservation.model_validate(llm_output)
 
         if serialized_output.result_is_sufficient:
             return Command(
@@ -402,7 +460,7 @@ class Graph:
                 update={
                     "ui_payload": "",
                     "next_node": "analytical_result",
-                    "analytical_observation": serialized_output
+                    "analytical_plan_observation": serialized_output
                 }
             )
 
@@ -411,15 +469,25 @@ class Graph:
             update={
                 "ui_payload": "",
                 "next_node": "analytical_planning",
-                "analytical_observation": serialized_output
+                "analytical_plan_observation": serialized_output
             }
         )
 
     def analytical_result(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = self.composer.get_analytical_plan(state)
+        context_prompt += self.composer.get_analytical_plan_execution_result(state)
+        context_prompt += self.composer.get_analytical_plan_observation_result(state)
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+        llm_output: AIMessage = self.low_model.invoke(llm_input)
+
         return {
             "ui_payload": "",
             "next_node": "infographic_requirement",
-            "analytical_result": ""
+            "analytical_result": llm_output
         }
 
     def infographic_requirement(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analytical_response", "infographic_planning"]]:
@@ -527,7 +595,7 @@ class Graph:
         self.graph_builder.add_node("data_retrieval_observation", self.data_retrieval_observation)
         self.graph_builder.add_node("analytical_planning", self.analytical_planning)
         self.graph_builder.add_node("analytical_plan_execution", self.analytical_plan_execution)
-        self.graph_builder.add_node("analytical_observation", self.analytical_observation)
+        self.graph_builder.add_node("analytical_plan_observation", self.analytical_plan_observation)
         self.graph_builder.add_node("analytical_result", self.analytical_result)
         self.graph_builder.add_node("infographic_requirement", self.infographic_requirement)
         self.graph_builder.add_node("analytical_response", self.analytical_response)

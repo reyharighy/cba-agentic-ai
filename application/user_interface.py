@@ -175,7 +175,7 @@ class UserInterface:
             data_retrieval_observation=None,
             analytical_planning=None,
             analytical_plan_execution=None,
-            analytical_observation=None,
+            analytical_plan_observation=None,
             analytical_result=None,
             infograhic_requirement=None,
             infographic_planning=None,
@@ -204,61 +204,65 @@ class UserInterface:
 
         try:
             for chunk in graph.stream(input=graph_input, context=graph_context, stream_mode="updates"):
-                if not isinstance(chunk, Dict):
-                    continue
+                st.write(chunk)
 
-                node_name, node_state = next(iter(chunk.items()))
+                # if not isinstance(chunk, Dict):
+                #     continue
 
-                if not node_state or not isinstance(node_state, Dict):
-                    continue
+                # node_name, node_state = next(iter(chunk.items()))
 
-                if ui_payload := node_state.get("ui_payload"):
-                    status_box.update(label=ui_payload)
+                # if not node_state or not isinstance(node_state, Dict):
+                #     continue
 
-                if node_name in pass_through_nodes:
-                    action_output: str = "Extracted business data." if node_name == "data_retrieval" else "Executed computational plan."
+                # if ui_payload := node_state.get("ui_payload"):
+                #     status_box.update(label=ui_payload)
 
-                    if column_containers:
-                        column_containers[1].write(action_output)
-                    else:
-                        status_box.write(action_output)
+                # if node_name in pass_through_nodes:
+                #     action_output: str = "Extracted business data." if node_name == "data_retrieval" else "Executed computational plan."
 
-                    if enable_interactive_graph and graph_placeholder and node_name not in end_nodes:
-                        self._render_graph_element(graph_placeholder, node_state)
+                #     if column_containers:
+                #         column_containers[1].write(action_output)
+                #     else:
+                #         status_box.write(action_output)
 
-                    continue
+                #     if enable_interactive_graph and graph_placeholder and node_name not in end_nodes:
+                #         self._render_graph_element(graph_placeholder, node_state)
 
-                try:
-                    if node_name == "self_correction" or node_name == "self_reflection":
-                        self.session_memory.thinking = node_state["computation_planning"].rationale
-                    else:
-                        self.session_memory.thinking = node_state[node_name].rationale
+                #     continue
 
-                    if enable_interactive_graph and graph_placeholder and node_name not in end_nodes:
-                        column_containers[1].write(self._stream_generator)
-                        self._render_graph_element(graph_placeholder, node_state)
-                    else:
-                        status_box.write(self._stream_generator)
+                # try:
+                #     if node_name == "self_correction" or node_name == "self_reflection":
+                #         self.session_memory.thinking = node_state["computation_planning"].rationale
+                #     else:
+                #         self.session_memory.thinking = node_state[node_name].rationale
 
-                except Exception as _:
-                    if node_name != "summarization":
-                        self.session_memory.chat_output = node_state["messages"][-1].content
-                        st.write(self._stream_generator)
+                #     if enable_interactive_graph and graph_placeholder and node_name not in end_nodes:
+                #         column_containers[1].write(self._stream_generator)
+                #         self._render_graph_element(graph_placeholder, node_state)
+                #     else:
+                #         status_box.write(self._stream_generator)
 
-                        if enable_interactive_graph and graph_placeholder and node_name != "punt_response" and node_state["next_node"] == "summarization":
-                            self._render_graph_element(graph_placeholder, node_state)
+                # except Exception as _:
+                #     if node_name != "summarization":
+                #         self.session_memory.chat_output = node_state["messages"][-1].content
+                #         st.write(self._stream_generator)
 
-                    if node_name == "summarization":
-                        st.session_state["success_toast"] = True
-                    elif node_name == "punt_response":
-                        st.session_state["punt_toast"] = True
-                        st.session_state["punt_response"].append(self.session_memory.chat_input)
-                        st.session_state["punt_response"].append(self.session_memory.chat_output)
-                        status_box.update(state="complete")
+                #         if enable_interactive_graph and graph_placeholder and node_name != "punt_response" and node_state["next_node"] == "summarization":
+                #             self._render_graph_element(graph_placeholder, node_state)
+
+                #     if node_name == "summarization":
+                #         st.session_state["success_toast"] = True
+                #     elif node_name == "punt_response":
+                #         st.session_state["punt_toast"] = True
+                #         st.session_state["punt_response"].append(self.session_memory.chat_input)
+                #         st.session_state["punt_response"].append(self.session_memory.chat_output)
+                #         status_box.update(state="complete")
 
         except Exception as e:
             st.session_state["error_toast"] = True
             st.error(f"Graph execution failed: {e}")
+
+        sleep(1000)
 
     def _render_graph_element(self, graph_placeholder: DeltaGenerator, node_state: Optional[Dict]) -> None:
         """

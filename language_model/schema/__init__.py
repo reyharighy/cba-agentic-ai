@@ -13,7 +13,7 @@ from .structured_output import (
     DataRetrievalPlanning,
     DataRetrievalObservation,
     AnalyticalPlanning,
-    AnalyticalObservation,
+    AnalyticalPlanObservation,
     InfographicRequirement,
     InfographicPlanning,
     InfographicObservation
@@ -27,7 +27,7 @@ __all__ = [
     "DataRetrievalPlanning",
     "DataRetrievalObservation",
     "AnalyticalPlanning",
-    "AnalyticalObservation",
+    "AnalyticalPlanObservation",
     "InfographicRequirement",
     "InfographicPlanning",
     "InfographicObservation"

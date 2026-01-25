@@ -111,7 +111,7 @@ class DataRetrievalObservation(BaseModel):
 
 class AnalyticalStep(BaseModel):
     """
-    Docstring for Step
+    Each step defines how data should be transformed or processed programmatically, without executing the operation or interpreting the result.
     """
     number: int = Field(
         ...,
@@ -141,7 +141,7 @@ class AnalyticalStep(BaseModel):
 
 class AnalyticalPlanning(BaseModel):
     """
-    Docstring for AnalyticalPlanning
+    This plan specifies the analysis type and an ordered sequence of computational steps that can be executed later in a controlled sandbox environment.
     """
     analysis_type: Literal["descriptive", "diagnostic", "predictive", "inferential"] = Field(
         ...,
@@ -156,9 +156,9 @@ class AnalyticalPlanning(BaseModel):
         description="Clear and detailed explanation in English"
     )
 
-class AnalyticalObservation(BaseModel):
+class AnalyticalPlanObservation(BaseModel):
     """
-    Docstring for AnalyticalObservation
+    Represents an evaluation of whether analytical execution results sufficiently fulfil the analytical plan and support answering the user's business analytical request.
     """
     result_is_sufficient: bool = Field(
         ...,

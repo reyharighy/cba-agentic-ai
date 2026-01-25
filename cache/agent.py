@@ -42,35 +42,3 @@ def load_graph() -> CompiledStateGraph[State, Context]:
     graph = Graph(context_manager, memory_manager, language_models)
 
     return graph.build_graph()
-
-@st_cache("Loading bootsrap code for sandbox environment", "data")
-def load_sandbox_bootstrap() -> Dict[Literal["descriptive", "diagnostic", "predictive", "inferential"], str]:
-    """
-    Load sandbox bootstrap code.
-
-    This function provides a dictionary of initialization code for the
-    sandboxed execution environment categorized based on analysis type.
-    """
-    pandas: str = "import pandas as pd"
-    numpy: str =  "import numpy as np"
-    scipy: str = "import scipy"
-    sklearn: str = "import sklearn"
-    df_load: str = "df = pd.read_csv('dataset.csv')"
-    df_load += '\n' + "for column in df.columns:"
-    df_load += '\n\t' + "if pd.api.types.is_object_dtype(df[column]):"
-    df_load += '\n\t\t' + "try:"
-    df_load += '\n\t\t\t' + "df[column] = pd.to_datetime(df[column])"
-    df_load += '\n\t\t' + "except Exception as _:"
-    df_load += '\n\t\t\t' + "pass"
-
-    descriptive: str = pandas + '\n' + numpy + '\n' + df_load
-    diagnostic: str = pandas + '\n' + numpy + '\n' + scipy + '\n' + df_load
-    predictive: str = pandas + '\n' + numpy + '\n' + scipy + '\n' + df_load
-    inferential: str = pandas + '\n' + numpy + '\n' + sklearn + '\n' + df_load
-
-    return {
-        "descriptive": descriptive,
-        "diagnostic": diagnostic,
-        "predictive": predictive,
-        "inferential": inferential,
-    }

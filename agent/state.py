@@ -13,6 +13,7 @@ from typing import (
 
 # third-party
 from e2b_code_interpreter import Execution
+from langchain_core.messages import AIMessage
 from langgraph.graph import MessagesState
 
 # internal
@@ -24,7 +25,7 @@ from language_model.schema import (
     DataRetrievalPlanning,
     DataRetrievalObservation,
     AnalyticalPlanning,
-    AnalyticalObservation,
+    AnalyticalPlanObservation,
     InfographicRequirement,
     InfographicPlanning,
     InfographicObservation
@@ -50,8 +51,8 @@ class State(MessagesState):
     data_retrieval_observation: Optional[DataRetrievalObservation]
     analytical_planning: Optional[AnalyticalPlanning]
     analytical_plan_execution: Optional[Execution]
-    analytical_observation: Optional[AnalyticalObservation]
-    analytical_result: Optional[str]
+    analytical_plan_observation: Optional[AnalyticalPlanObservation]
+    analytical_result: Optional[AIMessage]
     infograhic_requirement: Optional[InfographicRequirement]
     infographic_planning: Optional[InfographicPlanning]
     infographic_plan_execution: Optional[Execution]

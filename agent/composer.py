@@ -25,6 +25,7 @@ from langchain_core.messages import (
     AIMessage,
     HumanMessage,
 )
+from langgraph.runtime import Runtime
 from pandas.api.types import (
     is_datetime64_any_dtype,
     is_numeric_dtype,
@@ -38,6 +39,7 @@ from sqlglot import (
 )
 
 # internal
+from .runtime import Context
 from .state import State
 from context.database import ContextManager
 from context.datasets import working_dataset_path
@@ -99,16 +101,16 @@ class Composer:
 
         return llm_input
 
-    def get_punt_response_rationale(self, state: State) -> str:
+    def get_punt_response_feedback(self, state: State) -> str:
         """
-        Provide rationale to punt_response node.
+        Provide feedback to punt_response node.
 
         The rational is a base for the node to response produced by request_classification
         node in the previous process. Thus, it will help the generated response being less
         templated.
         """
         if state["request_classification"]:
-            context_prompt: str = "\n\nThe rationale of why the user's request is not related to business analytics domain:\n"
+            context_prompt: str = "\n\nThe feedback why the user's request is not related to business analytics domain:\n"
             context_prompt += state["request_classification"].rationale
 
             return context_prompt
@@ -127,16 +129,16 @@ class Composer:
 
         return context_prompt
 
-    def get_data_unavailability_response_rationale(self, state: State) -> str:
+    def get_data_unavailability_response_feedback(self, state: State) -> str:
         """
-        Provide rationale to data_unavailability_response node.
+        Provide feedback to data_unavailability_response node.
 
         The rational is a base for the node to response produced by data_availability
         node in the previous process. Thus, it will help the response generated to be align 
         with contextual information of why the request can't be answered based on data.
         """
         if state["data_availability"]:
-            context_prompt: str = "\n\nThe rationale of why the external database is unsupported to answer the user's request:\n"
+            context_prompt: str = "\n\nThe feedback why the external database is unsupported to answer the user's request:\n"
             context_prompt += state["data_availability"].rationale
 
             return context_prompt
@@ -152,7 +154,8 @@ class Composer:
         if state["data_retrieval_planning"]:
             context_prompt: str = "\n\nThe last generated SQL query used to extract data from external database into dataframe:\n"
             context_prompt += str(state["data_retrieval_planning"].sql_query)
-            context_prompt += f"\nThe rationale of executed SQL query: {state["data_retrieval_planning"].rationale}"
+            context_prompt += "\nThe reason why the generated SQL query is used to extract data from external database:\n"
+            context_prompt += f"{state["data_retrieval_planning"].rationale}"
 
             return context_prompt
 
@@ -200,9 +203,11 @@ class Composer:
     def get_data_retrieval_execution_feedback(self, state: State) -> str:
         """
         Provides execution-level feedback context to guide query replanning after a SQL execution failure.
+
+        The returned feedback supports error diagnosis and corrective sql query executed on the external database.
         """
         if state["data_retrieval_execution"]:
-            context_prompt: str = "\n\nThe feedback of why the data retrieval execution result on external database raises an error:\n"
+            context_prompt: str = "\n\nThe feedback why the data retrieval execution result on external database raises an error:\n"
             context_prompt += str(state["data_retrieval_execution"])
 
             return context_prompt
@@ -212,9 +217,11 @@ class Composer:
     def get_data_retrieval_observation_feedback(self, state: State) -> str:
         """
         Provides observational feedback explaining why retrieved data is insufficient for the user's analytical intent.
+
+
         """
         if state["data_retrieval_observation"]:
-            context_prompt: str = "\n\nThe feedback of why the data retrieval execution result on external database is insufficient to answer the user's request:\n"
+            context_prompt: str = "\n\nThe feedback why the data retrieval execution result on external database is insufficient to answer the user's request:\n"
             context_prompt += state["data_retrieval_observation"].rationale
 
             return context_prompt
@@ -238,7 +245,7 @@ class Composer:
                 nested_columns = [columns for columns in schema["columns"].values()]
 
                 for table in tables:
-                    if table not in [table_name for table_name in schema]:
+                    if table not in schema["tables"]:
                         return ValueError(f"Unknown table: {table}")
 
                 for column in columns:
@@ -249,3 +256,92 @@ class Composer:
         except ParseError as e:
             return ValueError(f"Invalid SQL Syntax: {e}")
 
+    def get_generated_python_code(self, state: State, runtime: Runtime[Context]) -> str:
+        """
+        Generate the executable Python code for sandbox execution.
+
+        This method assembles the sandbox bootstrap code based on the analysis type.
+        """
+        code: str = ""
+
+        if state["analytical_planning"]:
+            code += runtime.context.sandbox_bootstrap[state["analytical_planning"].analysis_type]
+
+            for analytical_step in state["analytical_planning"].plan:
+                code += '\n' + analytical_step.python_code + '\n'
+
+            return code
+        else:
+            raise ValueError(f"'analytical_planning' state must not be empty in '{sys._getframe(0).f_code.co_name}' node")
+
+    def get_analytical_plan(self, state: State, original: bool = False) -> str:
+        """
+        List the analytical plan that were generated.
+
+        The output represents the structured plan used to guide sandbox execution and subsequent observation.
+        """
+        if state["analytical_planning"]:
+            context_prompt: str = "\n\nThe step-by-step computational plan:"
+
+            for analytical_step in state["analytical_planning"].plan:
+                context_prompt += f"\n{analytical_step.number}. {analytical_step.description} {analytical_step}" if not original else f"\n- {analytical_step}"
+
+            return context_prompt
+
+        raise ValueError(f"'analytical_planning' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_analytical_plan_execution_result(self, state: State) -> str:
+        """
+        Retrieve standard output produced by sandbox execution.
+
+        This information reflects the observable results of analytical plan execution and is used during result evaluation.
+        """
+        if state["analytical_plan_execution"]:
+            context_prompt: str = "\n\nThe execution logs from the sandbox environment:\n"
+            context_prompt += str(state["analytical_plan_execution"].logs.stdout[0])
+
+            return context_prompt
+
+        raise ValueError(f"'analytical_plan_execution' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_analytical_plan_execution_error(self, state: State) -> str:
+        """
+        Retrieve execution error details from the sandbox environment.
+
+        The returned traceback supports error diagnosis and corrective planning during self-correction stages.
+        """
+        if state["analytical_plan_execution"] and state["analytical_plan_execution"].error:
+            context_prompt: str = "\n\nThe traceback error logs from the sandbox environment:\n"
+            context_prompt += state["analytical_plan_execution"].error.traceback
+
+            return context_prompt
+
+        raise ValueError(f"'analytical_plan_execution' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_analytical_plan_observation_feedback(self, state: State) -> str:
+        """
+        Retrieve the feedback produced during analytical plan execution result observation.
+
+        The returned feedback supports corrective analytical planning that's been assesses as insufficient.
+        """
+        if state["analytical_plan_observation"]:
+            context_prompt: str = "\n\nThe feedback why the analytical plan execution result is insufficient to answer the user's request:\n"
+            context_prompt += state["analytical_plan_observation"].rationale
+
+            return context_prompt
+
+        raise ValueError(f"'analytical_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_analytical_plan_observation_result(self, state: State) -> str:
+        """
+        Retrieve the rationale produced during analytical plan execution result observation.
+
+        The returned rationale supports the analytical_result to produce the final response after execution the analytical plan.
+        """
+        if state["analytical_plan_observation"]:
+            context_prompt: str = "\n\nThe observation result on the execution output of the analytical plan:\n"
+            context_prompt += state["analytical_plan_observation"].rationale
+
+            return context_prompt
+
+        raise ValueError(f"'analytical_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
