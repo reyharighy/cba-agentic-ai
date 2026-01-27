@@ -93,7 +93,7 @@ class MemoryManager:
 
     def index_short_memory(self) -> List[ShortMemory]:
         """
-         Retrieve all short-term memory entries.
+        Retrieve all short-term memory entries.
 
         This method returns the collection of short-term memory records
         maintained by the system.

@@ -23,4 +23,5 @@ class Context:
     """
     turn_num: int
     prompts_set: Dict[str, str]
-    sandbox_bootstrap: Dict[Literal["descriptive", "diagnostic", "predictive", "inferential"], str]
+    analytical_sandbox_bootstrap: Dict[Literal["descriptive", "diagnostic", "predictive", "inferential"], str]
+    infographic_sandbox_bootstrap: str

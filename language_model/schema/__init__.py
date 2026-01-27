@@ -16,7 +16,7 @@ from .structured_output import (
     AnalyticalPlanObservation,
     InfographicRequirement,
     InfographicPlanning,
-    InfographicObservation
+    InfographicPlanObservation
 )
 
 __all__ = [
@@ -30,5 +30,5 @@ __all__ = [
     "AnalyticalPlanObservation",
     "InfographicRequirement",
     "InfographicPlanning",
-    "InfographicObservation"
+    "InfographicPlanObservation"
 ]

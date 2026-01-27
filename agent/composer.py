@@ -154,7 +154,7 @@ class Composer:
         if state["data_retrieval_planning"]:
             context_prompt: str = "\n\nThe last generated SQL query used to extract data from external database into dataframe:\n"
             context_prompt += str(state["data_retrieval_planning"].sql_query)
-            context_prompt += "\nThe reason why the generated SQL query is used to extract data from external database:\n"
+            context_prompt += "\n\nThe reason why the generated SQL query is used to extract data from external database:\n"
             context_prompt += f"{state["data_retrieval_planning"].rationale}"
 
             return context_prompt
@@ -217,8 +217,6 @@ class Composer:
     def get_data_retrieval_observation_feedback(self, state: State) -> str:
         """
         Provides observational feedback explaining why retrieved data is insufficient for the user's analytical intent.
-
-
         """
         if state["data_retrieval_observation"]:
             context_prompt: str = "\n\nThe feedback why the data retrieval execution result on external database is insufficient to answer the user's request:\n"
@@ -256,27 +254,27 @@ class Composer:
         except ParseError as e:
             return ValueError(f"Invalid SQL Syntax: {e}")
 
-    def get_generated_python_code(self, state: State, runtime: Runtime[Context]) -> str:
+    def get_analytical_python_code(self, state: State, runtime: Runtime[Context]) -> str:
         """
         Generate the executable Python code for sandbox execution.
 
-        This method assembles the sandbox bootstrap code based on the analysis type.
+        This method assembles the sandbox bootstrap code based on the analysis type and the purpose of analystic plan execution.
         """
         code: str = ""
 
         if state["analytical_planning"]:
-            code += runtime.context.sandbox_bootstrap[state["analytical_planning"].analysis_type]
+            code += runtime.context.analytical_sandbox_bootstrap[state["analytical_planning"].analysis_type]
 
             for analytical_step in state["analytical_planning"].plan:
                 code += '\n' + analytical_step.python_code + '\n'
 
             return code
         else:
-            raise ValueError(f"'analytical_planning' state must not be empty in '{sys._getframe(0).f_code.co_name}' node")
+            raise ValueError(f"'analytical_planning' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
 
     def get_analytical_plan(self, state: State, original: bool = False) -> str:
         """
-        List the analytical plan that were generated.
+        List the analytical plan that was generated.
 
         The output represents the structured plan used to guide sandbox execution and subsequent observation.
         """
@@ -284,31 +282,17 @@ class Composer:
             context_prompt: str = "\n\nThe step-by-step computational plan:"
 
             for analytical_step in state["analytical_planning"].plan:
-                context_prompt += f"\n{analytical_step.number}. {analytical_step.description} {analytical_step}" if not original else f"\n- {analytical_step}"
+                context_prompt += f"\n{analytical_step.number}. {analytical_step.rationale}" if not original else f"\n- {analytical_step}"
 
             return context_prompt
 
         raise ValueError(f"'analytical_planning' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
 
-    def get_analytical_plan_execution_result(self, state: State) -> str:
-        """
-        Retrieve standard output produced by sandbox execution.
-
-        This information reflects the observable results of analytical plan execution and is used during result evaluation.
-        """
-        if state["analytical_plan_execution"]:
-            context_prompt: str = "\n\nThe execution logs from the sandbox environment:\n"
-            context_prompt += str(state["analytical_plan_execution"].logs.stdout[0])
-
-            return context_prompt
-
-        raise ValueError(f"'analytical_plan_execution' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
-
     def get_analytical_plan_execution_error(self, state: State) -> str:
         """
         Retrieve execution error details from the sandbox environment.
 
-        The returned traceback supports error diagnosis and corrective planning during self-correction stages.
+        The returned traceback supports error diagnosis and corrective planning during self-correction stage of analytical_plan node.
         """
         if state["analytical_plan_execution"] and state["analytical_plan_execution"].error:
             context_prompt: str = "\n\nThe traceback error logs from the sandbox environment:\n"
@@ -332,6 +316,20 @@ class Composer:
 
         raise ValueError(f"'analytical_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
 
+    def get_analytical_plan_execution_result(self, state: State) -> str:
+        """
+        Retrieve standard output produced by sandbox execution.
+
+        This information reflects the observable results of analytical plan execution and is used during result evaluation.
+        """
+        if state["analytical_plan_execution"]:
+            context_prompt: str = "\n\nThe execution logs from the sandbox environment:\n"
+            context_prompt += str(state["analytical_plan_execution"].logs.stdout[0])
+
+            return context_prompt
+
+        raise ValueError(f"'analytical_plan_execution' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
     def get_analytical_plan_observation_result(self, state: State) -> str:
         """
         Retrieve the rationale produced during analytical plan execution result observation.
@@ -345,3 +343,81 @@ class Composer:
             return context_prompt
 
         raise ValueError(f"'analytical_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_infographic_requirement_rationale(self, state: State) -> str:
+        """
+        Retrieve the rationale why the infographic is necessary to enhance the generated analytical results.
+
+        This information helps guide the infographic_planning to determine the visual intent.
+        """
+        context_prompt: str = ""
+
+        if state["infographic_requirement"]:
+            context_prompt += "\n\nThe reason why the analysis result requires infographic plot to communicates more clearly:\n"
+            context_prompt += state["infographic_requirement"].rationale
+
+            return context_prompt
+
+        raise ValueError(f"'infographic_requirement' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_infographic_plan(self, state: State) -> str:
+        """
+        List the infographic plan that was generated.
+
+        The output represents the plot plan used to guide sandbox execution and subsequent observation.
+        """
+        if state["infographic_planning"]:
+            context_prompt: str = "\n\nInfographic plan that was generated previously:"
+
+            for plot in state["infographic_planning"].plot_plan:
+                context_prompt += f"\n- {plot}"
+
+            return context_prompt
+
+        raise ValueError(f"'infographic_planning' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_infographic_plan_execution_error(self, state: State) -> str:
+        """
+        Retrieve execution error details from the sandbox environment.
+
+        The returned traceback supports error diagnosis and corrective planning during self-correction stage of infographic_planning node.
+        """
+        if state["infographic_plan_execution"] and state["infographic_plan_execution"].error:
+            context_prompt: str = "\n\nThe traceback error logs from the sandbox environment when execution infographic plan:\n"
+            context_prompt += state["infographic_plan_execution"].error.traceback
+
+            return context_prompt
+
+        raise ValueError(f"'infographic_plan_execution' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_infographic_plan_observation_feedback(self, state: State) -> str:
+        """
+        Retrieve the feedback produced during analytical plan execution result observation.
+
+        The returned feedback supports corrective analytical planning that's been assesses as insufficient.
+        """
+        if state["infographic_plan_observation"]:
+            context_prompt: str = "\n\nThe feedback why the infographic plan execution result is insufficient to enhance the analytical result:\n"
+            context_prompt += state["infographic_plan_observation"].rationale
+
+            return context_prompt
+
+        raise ValueError(f"'infographic_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+
+    def get_infographic_python_code(self, state: State, runtime: Runtime[Context]) -> str:
+        """
+        Generate the executable Python code for sandbox execution.
+
+        This method assembles the sandbox bootstrap code necessary for the code that executes a process of creating an infographic.
+        """
+        code: str = ""
+
+        if state["infographic_planning"]:
+            code += runtime.context.infographic_sandbox_bootstrap
+
+            for plot in state["infographic_planning"].plot_plan:
+                code += '\n' + plot.python_code + '\n'
+
+            return code
+        else:
+            raise ValueError(f"'infographic_planning' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")

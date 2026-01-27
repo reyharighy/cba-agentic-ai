@@ -118,10 +118,6 @@ class AnalyticalStep(BaseModel):
         ge=1,
         description="Sequential step number, starting from 1"
     )
-    description: str = Field(
-        ...,
-        description="What this step does in plain English"
-    )
     input_df: Optional[str] = Field(
         ...,
         description="Name of the input dataframe variable"
@@ -132,7 +128,7 @@ class AnalyticalStep(BaseModel):
     )
     python_code: str = Field(
         ...,
-        description="Python code in order to execute based on description step"
+        description="Python code in order to execute based on the current step"
     )
     rationale: str = Field(
         ...,
@@ -174,7 +170,7 @@ class AnalyticalPlanObservation(BaseModel):
 
 class InfographicRequirement(BaseModel):
     """
-    Docstring for InfographicRequirement
+    Represents a decision on whether a visual infographic is required to enhance the clarity and comprehension of an existing analytical result.
     """
     infographic_is_required: bool = Field(
         ...,
@@ -188,30 +184,28 @@ class InfographicRequirement(BaseModel):
         description="Clear and detailed explanation in English"
     )
 
-class InfographicStep(BaseModel):
+class InfographicPlot(BaseModel):
     """
-    Docstring for Plot
+    Represents a single visual infographic intended to communicate an existing analytical result without introducing new analysis.
     """
-    number: int = Field(
+    visual_intent: Literal[
+        "trend",
+        "comparison",
+        "distribution",
+        "composition",
+        "relationship",
+        "ranking"
+    ] = Field(
         ...,
-        ge=1,
-        description="Sequential step number, starting from 1"
-    )
-    description: str = Field(
-        ...,
-        description="What this step does in plain English"
-    )
-    input_df: Optional[str] = Field(
-        ...,
-        description="Name of the input dataframe variable"
-    )
-    output_graph_path: str = Field(
-        ...,
-        description="Path where the output graph is saved"
+        description="The primary communication purpose of the infographic"
     )
     python_code: str = Field(
         ...,
-        description="Python code in order to execute based on description step"
+        description="Python code that generates the infographic using matplotlib or seaborn"
+    )
+    output_path: str = Field(
+        ...,
+        description="Filesystem path where the generated infographic is saved"
     )
     rationale: str = Field(
         ...,
@@ -220,20 +214,20 @@ class InfographicStep(BaseModel):
 
 class InfographicPlanning(BaseModel):
     """
-    Docstring for InfographicPlanning
+    Specifies a set of visual infographics designed to improve comprehension of existing analytical results.
     """
-    plan: List[InfographicStep] = Field(
+    plot_plan: List[InfographicPlot] = Field(
         ...,
-        description="Ordered list of infographic steps to take in order to enhance the analytical results"
+        description="List of infographic plots to be generated"
     )
     rationale: str = Field(
         ...,
         description="Clear and detailed explanation in English"
     )
 
-class InfographicObservation(BaseModel):
+class InfographicPlanObservation(BaseModel):
     """
-    Docstring for InfographicObservation
+    Docstring for InfographicPlanObservation
     """
     result_is_sufficient: bool = Field(
         ...,

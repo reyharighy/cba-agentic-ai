@@ -34,7 +34,8 @@ from agent.stages import (
 from cache import (
     load_graph,
     load_prompts_set,
-    load_sandbox_bootstrap,
+    load_analytical_sandbox_bootstrap,
+    load_infographic_sandbox_bootstrap,
 )
 from memory.database import MemoryManager
 from memory.models import ChatHistory
@@ -177,16 +178,17 @@ class UserInterface:
             analytical_plan_execution=None,
             analytical_plan_observation=None,
             analytical_result=None,
-            infograhic_requirement=None,
+            infographic_requirement=None,
             infographic_planning=None,
             infographic_plan_execution=None,
-            infographic_observation=None
+            infographic_plan_observation=None
         )
 
         graph_context: Context = Context(
             turn_num=self.session_memory.turn_num,
             prompts_set=load_prompts_set(),
-            sandbox_bootstrap=load_sandbox_bootstrap()
+            analytical_sandbox_bootstrap=load_analytical_sandbox_bootstrap(),
+            infographic_sandbox_bootstrap=load_infographic_sandbox_bootstrap()
         )
 
         end_nodes: List[str] = ["punt_response", "summarization"]
@@ -205,7 +207,6 @@ class UserInterface:
         try:
             for chunk in graph.stream(input=graph_input, context=graph_context, stream_mode="updates"):
                 st.write(chunk)
-
                 # if not isinstance(chunk, Dict):
                 #     continue
 

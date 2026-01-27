@@ -38,18 +38,54 @@ def main() -> None:
     table: Table = Table(
         "sale_transactions",
         metadata,
-        Column("id", UUID(as_uuid=True), nullable=False, primary_key=True, unique=True, default=uuid4),
-        Column("hour_of_day", Integer, nullable=False),
-        Column("payment_type", String, nullable=False),
-        Column("net_price", Numeric(10, 2), nullable=False),
-        Column("coffee_name", String, nullable=False),
-        Column("time_of_day", String, nullable=False),
-        Column("day_name", String, nullable=False),
-        Column("is_weekend", Boolean, nullable= False),
-        Column("month_name", String, nullable=False),
-        Column("day_sort", Integer, nullable=False),
-        Column("month_sort", Integer, nullable=False),
-        Column("created_at", DateTime, nullable=False)
+        Column(
+            "id", UUID(as_uuid=True), nullable=False, primary_key=True, unique=True, default=uuid4,
+            comment="Unique identifier for each sale transaction record."
+        ),
+        Column(
+            "hour_of_day", Integer, nullable=False,
+            comment="Hour of the day when the transaction occurred, represented as an integer from 0 to 23."
+        ),
+        Column(
+            "payment_type", String, nullable=False,
+            comment="Method of payment used for the transaction."
+        ),
+        Column(
+            "net_price", Numeric(10, 2), nullable=False,
+            comment="Final transaction amount after deductions, stored in USD currency units."
+        ),
+        Column(
+            "coffee_name", String, nullable=False,
+            comment="Name or variant of the coffee product sold in the transaction."
+        ),
+        Column(
+            "time_of_day", String, nullable=False,
+            comment="Categorical label representing the time segment of the day."
+        ),
+        Column(
+            "day_name", String, nullable=False,
+            comment="Name of the weekday on which the transaction occurred."
+        ),
+        Column(
+            "is_weekend", Boolean, nullable= False,
+            comment="Boolean flag indicating whether the transaction occurred on a weekend."
+        ),
+        Column(
+            "month_name", String, nullable=False,
+            comment="Name of the month in which the transaction occurred."
+        ),
+        Column(
+            "day_sort", Integer, nullable=False,
+            comment="Numeric day-of-week value used for chronological sorting within a week."
+        ),
+        Column(
+            "month_sort", Integer, nullable=False,
+            comment="Numeric month value used for chronological sorting within a year."
+        ),
+        Column(
+            "created_at", DateTime, nullable=False,
+            comment="Exact timestamp when the transaction was recorded."
+        )
     )
 
     metadata.create_all(engine)

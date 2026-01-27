@@ -8,8 +8,9 @@ that are initialized once and reused across the system lifecycle.
 from .agent import load_graph
 from .context import (
     load_context_manager,
-    load_sandbox_bootstrap,
     load_prompts_set,
+    load_analytical_sandbox_bootstrap,
+    load_infographic_sandbox_bootstrap,
 )
 from .language_model import load_language_models
 from .memory import load_memory_manager
@@ -28,7 +29,8 @@ def cold_start() -> None:
     load_language_models()
     load_graph()
     load_prompts_set()
-    load_sandbox_bootstrap()
+    load_analytical_sandbox_bootstrap()
+    load_infographic_sandbox_bootstrap()
 
 __all__ = [
     "cold_start",
@@ -37,5 +39,6 @@ __all__ = [
     "load_language_models",
     "load_graph",
     "load_prompts_set",
-    "load_sandbox_bootstrap",
+    "load_analytical_sandbox_bootstrap",
+    "load_infographic_sandbox_bootstrap",
 ]

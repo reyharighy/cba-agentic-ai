@@ -22,7 +22,7 @@ from e2b_code_interpreter.code_interpreter_sync import Sandbox
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import (
     AIMessage,
-    SystemMessage
+    SystemMessage,
 )
 from langchain_core.runnables import Runnable
 from langgraph.graph import (
@@ -51,9 +51,10 @@ from language_model.schema import (
     AnalyticalPlanObservation,
     InfographicRequirement,
     InfographicPlanning,
-    InfographicObservation
+    InfographicPlanObservation,
 )
 from memory.database import MemoryManager
+from memory.infographic import infographic_path
 
 class Graph:
     def __init__(
@@ -83,7 +84,7 @@ class Graph:
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
 
-        llm: Runnable = self.low_model.with_structured_output(
+        llm: Runnable = self.high_model.with_structured_output(
             schema=IntentComprehension,
             method="json_schema"
         )
@@ -104,7 +105,7 @@ class Graph:
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.low_model.with_structured_output(
+        llm: Runnable = self.high_model.with_structured_output(
             schema=RequestClassification,
             method="json_schema"
         )
@@ -136,7 +137,7 @@ class Graph:
         context_prompt: str = self.composer.get_punt_response_feedback(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message] + state["messages"]
-        llm_output: AIMessage = self.low_model.invoke(llm_input)
+        llm_output: AIMessage = self.high_model.invoke(llm_input)
 
         return {
             "ui_payload": "",
@@ -151,7 +152,7 @@ class Graph:
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.low_model.with_structured_output(
+        llm: Runnable = self.high_model.with_structured_output(
             schema=AnalyticalRequirement,
             method="json_schema"
         )
@@ -184,7 +185,7 @@ class Graph:
         llm_input: Sequence = [system_message]
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.low_model.invoke(llm_input)
+        llm_output: AIMessage = self.high_model.invoke(llm_input)
 
         return {
             "ui_payload": "",
@@ -200,13 +201,12 @@ class Graph:
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.low_model.with_structured_output(
+        llm: Runnable = self.high_model.with_structured_output(
             schema=DataAvailability,
             method="json_schema"
         )
 
         llm_output = llm.invoke(llm_input)
-
         serialized_output: DataAvailability = DataAvailability.model_validate(llm_output)
 
         if serialized_output.data_is_available:
@@ -235,7 +235,7 @@ class Graph:
         llm_input: Sequence = [system_message]
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.low_model.invoke(llm_input)
+        llm_output: AIMessage = self.high_model.invoke(llm_input)
 
         return {
             "ui_payload": "",
@@ -269,13 +269,12 @@ class Graph:
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.low_model.with_structured_output(
+        llm: Runnable = self.high_model.with_structured_output(
             schema=DataRetrievalPlanning,
             method="json_schema"
         )
 
         llm_output = llm.invoke(llm_input)
-
         serialized_output: DataRetrievalPlanning = DataRetrievalPlanning.model_validate(llm_output)
 
         return {
@@ -317,13 +316,12 @@ class Graph:
                     update={
                         "ui_payload": "",
                         "next_node": "data_retrieval_observation",
-                        "data_retrieval_execution": None
                     }
                 )
 
             raise ValueError("'data_retrival_planning' state does not contain 'sql_query' attribute when retrieving data")
         else:
-            raise ValueError(f"'data_retrival_planning' state must not empty in '{sys._getframe(0).f_code.co_name}' node")
+            raise ValueError(f"'data_retrival_planning' state must not ne empty in '{sys._getframe(0).f_code.co_name}' node")
 
     def data_retrieval_observation(self, state: State, runtime: Runtime[Context]) -> Command[Literal["data_retrieval_planning", "analytical_planning"]]:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
@@ -335,7 +333,7 @@ class Graph:
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.low_model.with_structured_output(
+        llm: Runnable = self.high_model.with_structured_output(
             schema=DataRetrievalObservation,
             method="json_schema"
         )
@@ -358,6 +356,7 @@ class Graph:
             update={
                 "ui_payload": "",
                 "next_node": "data_retrieval_planning",
+                "data_retrieval_execution": None,
                 "data_retrieval_observation": serialized_output
             }
         )
@@ -367,8 +366,9 @@ class Graph:
         context_prompt: str = ""
 
         if state["analytical_planning"]:
-            context_prompt += self.composer.get_dataframe_schema_info()
+            context_prompt += self.composer.get_database_schema_info()
             context_prompt += self.composer.get_last_generated_sql_query(state)
+            context_prompt += self.composer.get_dataframe_schema_info()
             context_prompt += self.composer.get_analytical_plan(state, original=True)
 
             if state["analytical_plan_execution"]:
@@ -381,15 +381,16 @@ class Graph:
                 raise ValueError("'analytical_planning' is triggered by feedback node. One of these following states should exist: 'analytical_plan_execution' or 'analytical_observation'")
         else:
             system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-            context_prompt += self.composer.get_dataframe_schema_info()
+            context_prompt += self.composer.get_database_schema_info()
             context_prompt += self.composer.get_last_generated_sql_query(state)
+            context_prompt += self.composer.get_dataframe_schema_info()
 
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
         llm_input: Sequence = [system_message]
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.low_model.with_structured_output(
+        llm: Runnable = self.high_model.with_structured_output(
             schema=AnalyticalPlanning,
             method="json_schema"
         )
@@ -411,7 +412,7 @@ class Graph:
         with open(working_dataset_path, "rb") as dataset:
             sandbox.files.write('dataset.csv', dataset.read())
 
-        code: str = self.composer.get_generated_python_code(state, runtime)
+        code: str = self.composer.get_analytical_python_code(state, runtime)
         execution: Execution = sandbox.run_code(code)
 
         if execution.error:
@@ -446,7 +447,7 @@ class Graph:
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
 
-        llm: Runnable = self.low_model.with_structured_output(
+        llm: Runnable = self.high_model.with_structured_output(
             schema=AnalyticalPlanObservation,
             method="json_schema"
         )
@@ -469,6 +470,7 @@ class Graph:
             update={
                 "ui_payload": "",
                 "next_node": "analytical_planning",
+                "analytical_plan_execution": None,
                 "analytical_plan_observation": serialized_output
             }
         )
@@ -482,7 +484,7 @@ class Graph:
         llm_input: Sequence = [system_message]
         llm_input += self.composer.get_relevant_conversation(state)
         llm_input += state["messages"]
-        llm_output: AIMessage = self.low_model.invoke(llm_input)
+        llm_output: AIMessage = self.high_model.invoke(llm_input)
 
         return {
             "ui_payload": "",
@@ -491,46 +493,136 @@ class Graph:
         }
 
     def infographic_requirement(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analytical_response", "infographic_planning"]]:
-        serialized_output: InfographicRequirement = InfographicRequirement.model_validate({})
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        system_message: SystemMessage = SystemMessage(system_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+
+        if state["analytical_result"]:
+            llm_input += [state["analytical_result"]]
+        else:
+            raise ValueError(f"'analytical_result' state must not be empty in '{sys._getframe(0).f_code.co_name}' node")
+
+        llm: Runnable = self.high_model.with_structured_output(
+            schema=InfographicRequirement,
+            method="json_schema"
+        )
+
+        llm_output = llm.invoke(llm_input)
+        serialized_output: InfographicRequirement = InfographicRequirement.model_validate(llm_output)
 
         if serialized_output.infographic_is_required:
             return Command(
-                goto="analytical_response",
+                goto="infographic_planning",
                 update={
                     "ui_payload": "",
-                    "next_node": "analytical_response",
+                    "next_node": "infographic_planning",
                     "infographic_requirement": serialized_output
                 }
             )
 
         return Command(
-            goto="infographic_planning",
+            goto="analytical_response",
             update={
                 "ui_payload": "",
-                "next_node": "infographic_planning",
+                "next_node": "analytical_response",
                 "infographic_requirement": serialized_output
             }
         )
-    
+
     def analytical_response(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
+        # I'm still figuring out if there's different treatment based on the triggering node
+        if state["infographic_plan_observation"] is None:
+            if state["analytical_result"]:
+                return {
+                    "ui_payload": "",
+                    "next_node": "summarization",
+                    "messages": [state["analytical_result"]]
+                }
+
+            raise ValueError(f"'analytical_result' state must not be empty in '{sys._getframe(0).f_code.co_name}' node if inforgraphic is not required")
+
+        # Still not implementing real handling when this node is triggered by "infographic_plan_observation"
         return {
             "ui_payload": "",
             "next_node": "summarization",
-            "messages": []
+            "messages": [state["analytical_result"]]
         }
 
     def infographic_planning(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
-        serialized_output: InfographicPlanning = InfographicPlanning.model_validate({})
+        system_prompt: str = ""
+        context_prompt: str = ""
+
+        if state["infographic_planning"]:
+            context_prompt += self.composer.get_database_schema_info()
+            context_prompt += self.composer.get_last_generated_sql_query(state)
+            context_prompt += self.composer.get_dataframe_schema_info()
+            context_prompt += self.composer.get_infographic_requirement_rationale(state)
+            context_prompt += self.composer.get_infographic_plan(state)
+
+            if state["infographic_plan_execution"]:
+                system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name + "_from_infographic_plan_execution"]
+                context_prompt += self.composer.get_infographic_plan_execution_error(state)
+            elif state["infographic_plan_observation"]:
+                system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name + "_from_infographic_plan_observation"]
+                context_prompt += self.composer.get_infographic_plan_observation_feedback(state)
+            else:
+                raise ValueError("'infographic_planning' is triggered by feedback node. One of these following states should exist: 'infographic_plan_execution' or 'infographic_plan_observation'")
+        else:
+            system_prompt += runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+            context_prompt += self.composer.get_database_schema_info()
+            context_prompt += self.composer.get_last_generated_sql_query(state)
+            context_prompt += self.composer.get_dataframe_schema_info()
+            context_prompt += self.composer.get_infographic_requirement_rationale(state)
+        
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+
+        if state["analytical_result"]:
+            llm_input += [state["analytical_result"]]
+        else:
+            raise ValueError(f"'analytical_result' state must not be empty in '{sys._getframe(0).f_code.co_name}' node")
+
+        llm: Runnable = self.high_model.with_structured_output(
+            schema=InfographicPlanning,
+            method="json_schema"
+        )
+
+        llm_output = llm.invoke(llm_input)
+        serialized_output: InfographicPlanning = InfographicPlanning.model_validate(llm_output)
+
+        forbidden_lines: List[str] = [
+            ".tight_layout(",
+            ".close("
+        ]
+
+        for plot in serialized_output.plot_plan:
+            copied_code: str = plot.python_code
+            plot.python_code = ""
+
+            for line in copied_code.replace('\\n', '\n').split("\n"):
+                if not any(forbidden_line in line for forbidden_line in forbidden_lines):
+                    plot.python_code += line + '\n'
 
         return {
             "ui_payload": "",
             "next_node": "infographic_plan_execution",
-            "infographic_planning": serialized_output
+            "infographic_planning": serialized_output,
+            "infographic_plan_execution": None,
+            "infographic_plan_observation": None,
         }
 
-    def infographic_plan_execution(self, state: State, runtime: Runtime[Context]) -> Command[Literal["infographic_planning", "infographic_observation"]]:
+    def infographic_plan_execution(self, state: State, runtime: Runtime[Context]) -> Command[Literal["infographic_planning", "infographic_plan_observation"]]:
         sandbox: Sandbox = Sandbox.create()
-        execution: Execution = sandbox.run_code("")
+
+        with open(working_dataset_path, "rb") as dataset:
+            sandbox.files.write('dataset.csv', dataset.read())
+
+        code: str = self.composer.get_infographic_python_code(state, runtime)
+        execution: Execution = sandbox.run_code(code)
 
         if execution.error:
             return Command(
@@ -542,17 +634,30 @@ class Graph:
                 }
             )
 
+        if state["infographic_planning"]:
+            for plot in state["infographic_planning"].plot_plan:
+                image_file: bytearray = sandbox.files.read(
+                    path=plot.output_path,
+                    format="bytes"
+                )
+
+                with open(infographic_path / plot.output_path, "xb") as file:
+                    file.write(image_file)
+        else:
+            raise ValueError(f"'infographic_planning' state must not be empty in '{sys._getframe(0).f_code.co_name}' node")
+
         return Command(
-            goto="infographic_observation",
+            goto="infographic_plan_observation",
             update={
                 "ui_payload": "",
-                "next_node": "infographic_observation",
+                "next_node": "infographic_plan_observation",
                 "infographic_plan_execution": execution
             }
         )
 
-    def infographic_observation(self, state: State, runtime: Runtime[Context]) -> Command[Literal["infographic_planning", "analytical_response"]]:
-        serialized_output: InfographicObservation = InfographicObservation.model_validate({})
+    def infographic_plan_observation(self, state: State, runtime: Runtime[Context]) -> Command[Literal["infographic_planning", "analytical_response"]]:
+        raise ValueError(f"Intended stop at '{sys._getframe(0).f_code.co_name}' node")
+        serialized_output: InfographicPlanObservation = InfographicPlanObservation.model_validate({})
 
         if serialized_output.result_is_sufficient:
             return Command(
@@ -560,7 +665,7 @@ class Graph:
                 update={
                     "ui_payload": "",
                     "next_node": "analytical_response",
-                    "infographic_observation": serialized_output
+                    "infographic_plan_observation": serialized_output
                 }
             )
 
@@ -569,12 +674,12 @@ class Graph:
             update={
                 "ui_payload": "",
                 "next_node": "infographic_planning",
-                "infographic_observation": serialized_output
+                "infographic_plan_observation": serialized_output
             }
         )
-    
+
     def summarization(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
-        return {}
+        raise ValueError("Intended stop at 'summarization' node")
 
     def build_graph(self) -> CompiledStateGraph[State, Context]:
         """
@@ -601,7 +706,7 @@ class Graph:
         self.graph_builder.add_node("analytical_response", self.analytical_response)
         self.graph_builder.add_node("infographic_planning", self.infographic_planning)
         self.graph_builder.add_node("infographic_plan_execution", self.infographic_plan_execution)
-        self.graph_builder.add_node("infographic_observation", self.infographic_observation)
+        self.graph_builder.add_node("infographic_plan_observation", self.infographic_plan_observation)
         self.graph_builder.add_node("summarization", self.summarization)
 
         self.graph_builder.add_edge(START, "intent_comprehension")

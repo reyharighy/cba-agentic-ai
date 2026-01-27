@@ -30,7 +30,7 @@ def load_language_models() -> Dict[Literal["low", "medium", "high"], BaseChatMod
     models divided based on complexity task each node processes.
     """
     return {
-        "low": groq_gpt_120b_medium,
-        "medium": groq_gpt_120b_low,
+        "low": groq_gpt_120b_low,
+        "medium": groq_gpt_120b_medium,
         "high": groq_gpt_120b_high,
     }

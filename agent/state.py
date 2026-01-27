@@ -28,7 +28,7 @@ from language_model.schema import (
     AnalyticalPlanObservation,
     InfographicRequirement,
     InfographicPlanning,
-    InfographicObservation
+    InfographicPlanObservation
 )
 
 class State(MessagesState):
@@ -53,7 +53,7 @@ class State(MessagesState):
     analytical_plan_execution: Optional[Execution]
     analytical_plan_observation: Optional[AnalyticalPlanObservation]
     analytical_result: Optional[AIMessage]
-    infograhic_requirement: Optional[InfographicRequirement]
+    infographic_requirement: Optional[InfographicRequirement]
     infographic_planning: Optional[InfographicPlanning]
     infographic_plan_execution: Optional[Execution]
-    infographic_observation: Optional[InfographicObservation]
+    infographic_plan_observation: Optional[InfographicPlanObservation]

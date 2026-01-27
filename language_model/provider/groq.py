@@ -11,6 +11,7 @@ groq_gpt_120b_low: BaseChatModel = ChatGroq(
     max_tokens=None,
     reasoning_format="parsed",
     reasoning_effort="low",
+    timeout=None,
 )
 
 groq_gpt_120b_medium: BaseChatModel = ChatGroq(
@@ -19,6 +20,7 @@ groq_gpt_120b_medium: BaseChatModel = ChatGroq(
     max_tokens=None,
     reasoning_format="parsed",
     reasoning_effort="medium",
+    timeout=None,
 )
 
 groq_gpt_120b_high: BaseChatModel = ChatGroq(
@@ -27,4 +29,5 @@ groq_gpt_120b_high: BaseChatModel = ChatGroq(
     max_tokens=None,
     reasoning_format="parsed",
     reasoning_effort="high",
+    timeout=None,
 )
