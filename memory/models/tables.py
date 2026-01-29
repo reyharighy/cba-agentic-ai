@@ -33,6 +33,6 @@ short_memories = Table(
     table_schema_metadata,
     Column("turn_num", Integer, nullable=False),
     Column("summary", String, nullable=False),
-    Column("sql_query", String, nullable=True),
+    Column("sql_query", String, nullable=False),
     Column("created_at", DateTime, nullable=False, default=datetime.now),
 )

@@ -13,7 +13,10 @@ from .context import (
     load_infographic_sandbox_bootstrap,
 )
 from .language_model import load_language_models
-from .memory import load_memory_manager
+from .memory import (
+    load_memory_manager,
+    load_infographic,
+)
 from util import st_cache
 
 @st_cache("Setting up application data and resources", "data")
@@ -36,6 +39,7 @@ __all__ = [
     "cold_start",
     "load_context_manager",
     "load_memory_manager",
+    "load_infographic",
     "load_language_models",
     "load_graph",
     "load_prompts_set",

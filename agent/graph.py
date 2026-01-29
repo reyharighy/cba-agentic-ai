@@ -7,6 +7,7 @@ certain responsibility that accomplishes agentic workflow altogether.
 """
 # standard
 import sys
+from pathlib import Path
 from typing import (
     Any,
     Dict,
@@ -39,7 +40,7 @@ from .composer import Composer
 from .runtime import Context
 from .state import State
 from context.database import ContextManager
-from context.datasets import working_dataset_path
+from context.datasets import dataset_file_path
 from language_model.schema import (
     IntentComprehension,
     RequestClassification,
@@ -54,14 +55,18 @@ from language_model.schema import (
     InfographicPlanObservation,
 )
 from memory.database import MemoryManager
-from memory.infographic import infographic_path
+from memory.infographic import infographic_dir_path
+from memory.models import (
+    ChatHistoryCreate,
+    ShortMemoryCreate
+)
 
 class Graph:
     def __init__(
         self,
         context_manager: ContextManager,
         memory_manager: MemoryManager,
-        language_models: Dict[Literal["low", "medium", "high"], BaseChatModel]
+        language_models: Dict[Literal["low", "medium", "high", "qwen"], BaseChatModel]
     ) -> None:
         """
         Initialize the orchestrator with a graph definition.
@@ -72,6 +77,7 @@ class Graph:
         self.low_model: BaseChatModel = language_models["low"]
         self.medium_model: BaseChatModel = language_models["medium"]
         self.high_model: BaseChatModel = language_models["high"]
+        self.qwen: BaseChatModel = language_models["qwen"]
 
         self.graph_builder: StateGraph[State, Context] = StateGraph(
             state_schema=State,
@@ -398,6 +404,9 @@ class Graph:
         llm_output = llm.invoke(llm_input)
         serialized_output: AnalyticalPlanning = AnalyticalPlanning.model_validate(llm_output)
 
+        for analytical_step in serialized_output.plan:
+            analytical_step.python_code = analytical_step.python_code.replace('\\n', '\n')
+
         return {
             "ui_payload": "",
             "next_node": "analytical_plan_execution",
@@ -409,11 +418,12 @@ class Graph:
     def analytical_plan_execution(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analytical_planning", "analytical_plan_observation"]]:
         sandbox: Sandbox = Sandbox.create()
 
-        with open(working_dataset_path, "rb") as dataset:
+        with open(dataset_file_path, "rb") as dataset:
             sandbox.files.write('dataset.csv', dataset.read())
 
         code: str = self.composer.get_analytical_python_code(state, runtime)
         execution: Execution = sandbox.run_code(code)
+        sandbox.kill()
 
         if execution.error:
             return Command(
@@ -436,8 +446,7 @@ class Graph:
 
     def analytical_plan_observation(self, state: State, runtime: Runtime[Context]) -> Command[Literal["analytical_planning", "analytical_result"]]:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        context_prompt: str = "\n\nContext information is provided below."
-        context_prompt += self.composer.get_database_schema_info()
+        context_prompt: str = self.composer.get_database_schema_info()
         context_prompt += self.composer.get_last_generated_sql_query(state)
         context_prompt += self.composer.get_dataframe_schema_info()
         context_prompt += self.composer.get_analytical_plan(state)
@@ -593,19 +602,7 @@ class Graph:
 
         llm_output = llm.invoke(llm_input)
         serialized_output: InfographicPlanning = InfographicPlanning.model_validate(llm_output)
-
-        forbidden_lines: List[str] = [
-            ".tight_layout(",
-            ".close("
-        ]
-
-        for plot in serialized_output.plot_plan:
-            copied_code: str = plot.python_code
-            plot.python_code = ""
-
-            for line in copied_code.replace('\\n', '\n').split("\n"):
-                if not any(forbidden_line in line for forbidden_line in forbidden_lines):
-                    plot.python_code += line + '\n'
+        serialized_output.python_code = serialized_output.python_code.replace('\\n', '\n')
 
         return {
             "ui_payload": "",
@@ -618,11 +615,12 @@ class Graph:
     def infographic_plan_execution(self, state: State, runtime: Runtime[Context]) -> Command[Literal["infographic_planning", "infographic_plan_observation"]]:
         sandbox: Sandbox = Sandbox.create()
 
-        with open(working_dataset_path, "rb") as dataset:
+        with open(dataset_file_path, "rb") as dataset:
             sandbox.files.write('dataset.csv', dataset.read())
 
-        code: str = self.composer.get_infographic_python_code(state, runtime)
+        code: str = self.composer.get_infographic_python_code(state, runtime, on_sanbox=True)
         execution: Execution = sandbox.run_code(code)
+        sandbox.kill()
 
         if execution.error:
             return Command(
@@ -635,14 +633,30 @@ class Graph:
             )
 
         if state["infographic_planning"]:
-            for plot in state["infographic_planning"].plot_plan:
-                image_file: bytearray = sandbox.files.read(
-                    path=plot.output_path,
-                    format="bytes"
-                )
+            infographic_file_path: Path = Path(infographic_dir_path / f"turn_num_{runtime.context.turn_num + 1}/infographic.py")
 
-                with open(infographic_path / plot.output_path, "xb") as file:
-                    file.write(image_file)
+            infographic_file_path.parent.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            with open(dataset_file_path, "rb") as dataset_file:
+                with open(infographic_file_path.parent / "dataset.csv", "xb") as file:
+                    file.write(dataset_file.read())
+
+            with open(infographic_file_path, "x", encoding="utf-8") as file:
+                content: str = "import streamlit as st\n"
+                content += "from pathlib import Path\n"
+                content += self.composer.get_infographic_python_code(state, runtime)
+                content += "st.plotly_chart(fig, on_select='ignore')\n"
+                content_list = content.split('\n')
+
+                for index, line in enumerate(content_list):
+                    if line == "df = pd.read_csv('dataset.csv')":
+                        content_list[index] = "df = pd.read_csv(Path(__file__).parent / 'dataset.csv')"
+                        break
+
+                file.write('\n'.join(content_list))
         else:
             raise ValueError(f"'infographic_planning' state must not be empty in '{sys._getframe(0).f_code.co_name}' node")
 
@@ -651,13 +665,28 @@ class Graph:
             update={
                 "ui_payload": "",
                 "next_node": "infographic_plan_observation",
-                "infographic_plan_execution": execution
             }
         )
 
     def infographic_plan_observation(self, state: State, runtime: Runtime[Context]) -> Command[Literal["infographic_planning", "analytical_response"]]:
-        raise ValueError(f"Intended stop at '{sys._getframe(0).f_code.co_name}' node")
-        serialized_output: InfographicPlanObservation = InfographicPlanObservation.model_validate({})
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        context_prompt: str = self.composer.get_database_schema_info()
+        context_prompt += self.composer.get_last_generated_sql_query(state)
+        context_prompt += self.composer.get_dataframe_schema_info()
+        context_prompt += self.composer.get_infographic_requirement_rationale(state)
+        context_prompt += self.composer.get_infographic_plan(state)
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+
+        llm: Runnable = self.high_model.with_structured_output(
+            schema=InfographicPlanObservation,
+            method="json_schema"
+        )
+
+        llm_output = llm.invoke(llm_input)
+        serialized_output: InfographicPlanObservation = InfographicPlanObservation.model_validate(llm_output)
 
         if serialized_output.result_is_sufficient:
             return Command(
@@ -679,7 +708,43 @@ class Graph:
         )
 
     def summarization(self, state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
-        raise ValueError("Intended stop at 'summarization' node")
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        system_message: SystemMessage = SystemMessage(system_prompt)
+        llm_input: Sequence = [system_message]
+        llm_input += self.composer.get_relevant_conversation(state)
+        llm_input += state["messages"]
+        llm_output: AIMessage = self.high_model.invoke(llm_input)
+
+        turn_num = runtime.context.turn_num + 1
+
+        create_chat_history_params: ChatHistoryCreate = ChatHistoryCreate(
+            turn_num=turn_num,
+            role="Human",
+            content=str(state["messages"][0].content)
+        )
+
+        self.memory_manager.store_chat_history(create_chat_history_params())
+
+        create_chat_history_params = ChatHistoryCreate(
+            turn_num=turn_num,
+            role="AI",
+            content=str(state["messages"][1].content)
+        )
+
+        self.memory_manager.store_chat_history(create_chat_history_params())
+
+        if state["data_retrieval_planning"]:
+            create_short_memory_params: ShortMemoryCreate = ShortMemoryCreate(
+                turn_num=turn_num,
+                summary=str(llm_output.content),
+                sql_query=str(state["data_retrieval_planning"].sql_query)
+            )
+
+            self.memory_manager.store_short_memory(create_short_memory_params())
+        else:
+            raise ValueError(f"'data_retrieval_planning' state must not be empty in '{sys._getframe(0).f_code.co_name}' node")
+
+        return {"summarization": llm_output}
 
     def build_graph(self) -> CompiledStateGraph[State, Context]:
         """

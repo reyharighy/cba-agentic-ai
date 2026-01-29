@@ -6,7 +6,6 @@ information derived from conversational interactions.
 """
 # standard
 from datetime import datetime
-from typing import Optional
 
 # third-party
 from pydantic import (
@@ -23,7 +22,7 @@ class ShortMemory(BaseModel):
     """
     turn_num: int = Field(ge=1)
     summary: str = Field(min_length=1)
-    sql_query: Optional[str] = Field(min_length=1, default=None)
+    sql_query: str = Field(min_length=1)
     created_at: datetime = Field(default_factory=datetime.now)
 
 class ShortMemoryCreate(BaseModel):
@@ -35,7 +34,7 @@ class ShortMemoryCreate(BaseModel):
     """
     turn_num: int
     summary: str
-    sql_query: Optional[str]
+    sql_query: str
 
     def __call__(self) -> ShortMemory:
         """

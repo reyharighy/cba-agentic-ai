@@ -37,6 +37,8 @@ from context.system_prompts import (
     INFOGRAPHIC_PLANNING,
     INFOGRAPHIC_PLANNING_FROM_INFOGRAPHIC_PLAN_EXECUTION,
     INFOGRAPHIC_PLANNING_FROM_INFOGRAPHIC_PLAN_OBSERVATION,
+    INFOGRAPHIC_PLAN_OBSERVATION,
+    SUMMARIZATION,
 )
 from util import st_cache
 
@@ -80,6 +82,8 @@ def load_prompts_set() -> Dict[str, str]:
         "infographic_planning": INFOGRAPHIC_PLANNING,
         "infographic_planning_from_infographic_plan_execution": INFOGRAPHIC_PLANNING_FROM_INFOGRAPHIC_PLAN_EXECUTION,
         "infographic_planning_from_infographic_plan_observation": INFOGRAPHIC_PLANNING_FROM_INFOGRAPHIC_PLAN_OBSERVATION,
+        "infographic_plan_observation": INFOGRAPHIC_PLAN_OBSERVATION,
+        "summarization": SUMMARIZATION,
     }
 
 @st_cache("Loading bootsrap code for sandbox environment at 'analytical_plan_execution' node", "data")
@@ -124,18 +128,18 @@ def load_infographic_sandbox_bootstrap() -> str:
     This function provides initialization code for the sandboxed execution environment 
     to create an infographic in order to better communicate the analytical results.
     """
-    ignore_warnings: str = "import warnings\n"
-    ignore_warnings += "warnings.filterwarnings('ignore')\n"
+    warnings: str = "import warnings\n"
     pandas: str = "import pandas as pd\n"
     numpy: str =  "import numpy as np\n"
-    matplotlib: str = "import matplotlib.pyplot as plt\n"
-    seaborn: str = "import seaborn as sns\n"
+    graph_objects: str = "import plotly.graph_objects as go\n"
+    express: str = "import plotly.express as px\n\n"
+    ignore_warnings: str = "warnings.filterwarnings('ignore')\n"
     df_load: str = "df = pd.read_csv('dataset.csv')\n"
-    df_load += '\n' + "for column in df.columns:"
-    df_load += '\n\t' + "if pd.api.types.is_object_dtype(df[column]):"
-    df_load += '\n\t\t' + "try:"
-    df_load += '\n\t\t\t' + "df[column] = pd.to_datetime(df[column])"
-    df_load += '\n\t\t' + "except Exception as _:"
-    df_load += '\n\t\t\t' + "pass\n"
+    df_transform: str = '\n' + "for column in df.columns:"
+    df_transform += '\n\t' + "if pd.api.types.is_object_dtype(df[column]):"
+    df_transform += '\n\t\t' + "try:"
+    df_transform += '\n\t\t\t' + "df[column] = pd.to_datetime(df[column])"
+    df_transform += '\n\t\t' + "except Exception as _:"
+    df_transform += '\n\t\t\t' + "pass\n\n"
 
-    return ignore_warnings + pandas + numpy + matplotlib + seaborn + df_load
+    return warnings + pandas + numpy + graph_objects + express + ignore_warnings + df_load + df_transform

@@ -42,7 +42,7 @@ from sqlglot import (
 from .runtime import Context
 from .state import State
 from context.database import ContextManager
-from context.datasets import working_dataset_path
+from context.datasets import dataset_file_path
 from memory.database import MemoryManager
 from memory.models import (
     ChatHistory,
@@ -169,14 +169,14 @@ class Composer:
         and summarizes column types along with representative values to guide
         analytical reasoning.
         """
-        if not working_dataset_path.exists():
-            working_dataset_path.touch()
+        if not dataset_file_path.exists():
+            dataset_file_path.touch()
 
         try:
             context_prompt: str = "\n\nDataframe schema and sample values in each columns:"
             col_value_dict: Dict[str, tuple[str, Any]] = {}
             dset_attrs: str = ""
-            df: pd.DataFrame = pd.read_csv(working_dataset_path)
+            df: pd.DataFrame = pd.read_csv(dataset_file_path)
 
             for column in df.columns:
                 if is_object_dtype(df[column]):
@@ -353,7 +353,7 @@ class Composer:
         context_prompt: str = ""
 
         if state["infographic_requirement"]:
-            context_prompt += "\n\nThe reason why the analysis result requires infographic plot to communicates more clearly:\n"
+            context_prompt += "\n\nThe reason why the analysis result requires infographic visualization to communicate more clearly:\n"
             context_prompt += state["infographic_requirement"].rationale
 
             return context_prompt
@@ -367,10 +367,8 @@ class Composer:
         The output represents the plot plan used to guide sandbox execution and subsequent observation.
         """
         if state["infographic_planning"]:
-            context_prompt: str = "\n\nInfographic plan that was generated previously:"
-
-            for plot in state["infographic_planning"].plot_plan:
-                context_prompt += f"\n- {plot}"
+            context_prompt: str = "\n\nInfographic plan that was generated previously:\n"
+            context_prompt += str(state["infographic_planning"])
 
             return context_prompt
 
@@ -404,19 +402,19 @@ class Composer:
 
         raise ValueError(f"'infographic_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
 
-    def get_infographic_python_code(self, state: State, runtime: Runtime[Context]) -> str:
+    def get_infographic_python_code(self, state: State, runtime: Runtime[Context], on_sanbox: bool = False) -> str:
         """
         Generate the executable Python code for sandbox execution.
 
         This method assembles the sandbox bootstrap code necessary for the code that executes a process of creating an infographic.
         """
-        code: str = ""
-
         if state["infographic_planning"]:
-            code += runtime.context.infographic_sandbox_bootstrap
+            code: str = runtime.context.infographic_sandbox_bootstrap
 
-            for plot in state["infographic_planning"].plot_plan:
-                code += '\n' + plot.python_code + '\n'
+            for line in state["infographic_planning"].python_code.replace('\\n', '\n').split('\n'):
+                code += line + '\n' if line != "fig" else ''
+
+            code += "\n_ = None" if on_sanbox else ''
 
             return code
         else:

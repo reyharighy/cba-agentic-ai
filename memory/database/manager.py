@@ -136,22 +136,3 @@ class MemoryManager:
             mappings: List[ShortMemory] = [ShortMemory.model_validate(row) for row in result.mappings()]
 
             return mappings.pop() if mappings else None
-
-    def show_last_saved_sql_query(self) -> Optional[str]:
-        """
-        Retrieve the most recent stored query.
-
-        This method returns the last query recorded by the system, if present.
-        """
-        with self.internal.begin() as connection:
-            result: CursorResult = connection.execute(
-                select(short_memories).where(
-                    short_memories.c.sql_query.isnot(None)
-                ).order_by(
-                    short_memories.c.created_at.desc()
-                ).limit(1)
-            )
-
-            mappings: List[ShortMemory] = [ShortMemory.model_validate(row) for row in result.mappings()]
-
-            return mappings.pop().sql_query if mappings else None

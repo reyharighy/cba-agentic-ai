@@ -6,6 +6,7 @@ interactions, streaming graph execution output, and coordinating user input
 with the orchestration graph.
 """
 # standard
+from pathlib import Path
 from time import sleep
 from typing import (
     Dict,
@@ -36,8 +37,10 @@ from cache import (
     load_prompts_set,
     load_analytical_sandbox_bootstrap,
     load_infographic_sandbox_bootstrap,
+    load_infographic,
 )
 from memory.database import MemoryManager
+from memory.infographic import infographic_dir_path
 from memory.models import ChatHistory
 
 class UserInterface:
@@ -89,14 +92,14 @@ class UserInterface:
         self.session_memory.turn_num = max(chat.turn_num for chat in chat_history) if chat_history else 0
 
         if self.session_memory.turn_num > 0:
-            chat_turn_slicer: List[Union[ChatHistory, str]] = []
+            message_block: List[Union[ChatHistory, str]] = []
 
             for chat in chat_history:
-                chat_turn_slicer.append(chat)
+                message_block.append(chat)
 
-                if len(chat_turn_slicer) == 2:
-                    self._render_chat_turn_block(chat_turn=chat_turn_slicer)
-                    chat_turn_slicer = []
+                if len(message_block) == 2:
+                    self._render_chat_turn_block(chat_turn=message_block)
+                    message_block = []
 
     def _process_chat_input(self) -> None:
         """
@@ -136,6 +139,9 @@ class UserInterface:
                 on_processing_request=on_processing_request,
                 turn_element=chat_turn[1] if not on_processing_request else None
             )
+
+            if chat_turn and isinstance(chat_turn[-1], ChatHistory):
+                self._render_infographic_turn_block(chat_turn[-1].turn_num)
     
     def _render_turn_element(self, input_type: bool, on_processing_request: bool, turn_element: Optional[Union[ChatHistory, str]]) -> None:
         """
@@ -152,6 +158,16 @@ class UserInterface:
             st.write(turn_element)
         else:
             raise ValueError("'turn_element' must not be None when 'on_processing_request' is False")
+
+    def _render_infographic_turn_block(self, turn_num: int) -> None:
+        infographic_object_dir_path: Path = infographic_dir_path / f"turn_num_{turn_num}"
+
+        if infographic_object_dir_path.exists():
+            infographic_object_file_path: Path = infographic_object_dir_path / "infographic.py"
+            loader, module = load_infographic(infographic_object_file_path)
+
+            if loader and module:
+                loader.exec_module(module)
 
     def _graph_invocation(self) -> None:
         """
@@ -181,7 +197,8 @@ class UserInterface:
             infographic_requirement=None,
             infographic_planning=None,
             infographic_plan_execution=None,
-            infographic_plan_observation=None
+            infographic_plan_observation=None,
+            summarization=None
         )
 
         graph_context: Context = Context(
@@ -191,8 +208,8 @@ class UserInterface:
             infographic_sandbox_bootstrap=load_infographic_sandbox_bootstrap()
         )
 
-        end_nodes: List[str] = ["punt_response", "summarization"]
-        pass_through_nodes: List[str] = ["data_retrieval", "sandbox_environment"]
+        # end_nodes: List[str] = ["punt_response", "summarization"]
+        # pass_through_nodes: List[str] = ["data_retrieval", "sandbox_environment"]
         status_box: DeltaGenerator = st.status("Understanding request intent", expanded=True)
         column_containers: List[DeltaGenerator] = []
         graph_placeholder: Optional[DeltaGenerator] = None
@@ -263,7 +280,7 @@ class UserInterface:
             st.session_state["error_toast"] = True
             st.error(f"Graph execution failed: {e}")
 
-        sleep(1000)
+        # sleep(1000)
 
     def _render_graph_element(self, graph_placeholder: DeltaGenerator, node_state: Optional[Dict]) -> None:
         """

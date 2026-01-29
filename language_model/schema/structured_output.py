@@ -184,9 +184,9 @@ class InfographicRequirement(BaseModel):
         description="Clear and detailed explanation in English"
     )
 
-class InfographicPlot(BaseModel):
+class InfographicPlanning(BaseModel):
     """
-    Represents a single visual infographic intended to communicate an existing analytical result without introducing new analysis.
+    Specifies a visual infographics designed to improve comprehension of existing analytical result.
     """
     visual_intent: Literal[
         "trend",
@@ -201,24 +201,7 @@ class InfographicPlot(BaseModel):
     )
     python_code: str = Field(
         ...,
-        description="Python code that generates the infographic using matplotlib or seaborn"
-    )
-    output_path: str = Field(
-        ...,
-        description="Filesystem path where the generated infographic is saved"
-    )
-    rationale: str = Field(
-        ...,
-        description="Clear and detailed explanation in English"
-    )
-
-class InfographicPlanning(BaseModel):
-    """
-    Specifies a set of visual infographics designed to improve comprehension of existing analytical results.
-    """
-    plot_plan: List[InfographicPlot] = Field(
-        ...,
-        description="List of infographic plots to be generated"
+        description="Python code in order to execute based on the infographic rationale using Plotly library"
     )
     rationale: str = Field(
         ...,
@@ -227,12 +210,12 @@ class InfographicPlanning(BaseModel):
 
 class InfographicPlanObservation(BaseModel):
     """
-    Docstring for InfographicPlanObservation
+    Evaluate whether the generated code logically matches the intended visual communication purpose based on the existing analytical result.
     """
     result_is_sufficient: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the execution result fulfils the infographic planning. "
+            "The value must be set to True if the generated code logically matches the intended visual communication purpose. "
             "Otherwise, set the value to False."
         )
     )

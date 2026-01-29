@@ -32,7 +32,7 @@ from sqlalchemy import (
 from sqlalchemy.exc import ProgrammingError
 
 # internal
-from context.datasets import working_dataset_path
+from context.datasets import dataset_file_path
 
 class ContextManager:
     def __init__(self, external_db_url: str) -> None:
@@ -120,6 +120,6 @@ class ContextManager:
         try:
             with self.external.begin() as connection:
                 df = pd.read_sql(text(statement), connection)
-                df.to_csv(working_dataset_path, index=False, encoding="utf-8")
+                df.to_csv(dataset_file_path, index=False, encoding="utf-8")
         except ProgrammingError as e:
             return ValueError(str(e.orig))

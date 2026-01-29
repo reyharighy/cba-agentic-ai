@@ -57,3 +57,4 @@ class State(MessagesState):
     infographic_planning: Optional[InfographicPlanning]
     infographic_plan_execution: Optional[Execution]
     infographic_plan_observation: Optional[InfographicPlanObservation]
+    summarization: Optional[AIMessage]

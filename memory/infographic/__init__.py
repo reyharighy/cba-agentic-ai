@@ -6,8 +6,8 @@ datasets used during application execution are stored.
 """
 from pathlib import Path
 
-infographic_path: Path = Path(__file__).resolve().parent
+infographic_dir_path: Path = Path(__file__).resolve().parent
 
 __all__ = [
-    "infographic_path"
+    "infographic_dir_path"
 ]
