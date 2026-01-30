@@ -212,6 +212,7 @@ class UserInterface:
                 input=graph_input,
                 context=graph_context,
                 stream_mode="updates",
+                config={"recursion_limit": 100},
             ):
                 st.write(chunk)
                 st.write(self.__stream_generator)

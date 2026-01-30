@@ -858,18 +858,12 @@ class Graph:
 
         self.memory_manager.store_chat_history(create_chat_history_params())
 
-        if state["data_retrieval_plan"]:
-            create_short_memory_params: ShortMemoryCreate = ShortMemoryCreate(
-                turn_num=turn_num,
-                summary=cast(str, llm_output.content),
-                sql_query=str(state["data_retrieval_plan"].sql_query),
-            )
+        create_short_memory_params: ShortMemoryCreate = ShortMemoryCreate(
+            turn_num=turn_num,
+            summary=cast(str, llm_output.content),
+        )
 
-            self.memory_manager.store_short_memory(create_short_memory_params())
-        else:
-            raise ValueError(
-                f"'data_retrieval_plan' state must not be empty in '{sys._getframe(0).f_code.co_name}' node"
-            )
+        self.memory_manager.store_short_memory(create_short_memory_params())
 
         return {"summarization": llm_output}
 

@@ -5,14 +5,12 @@ services:
       args:
         STREAMLIT_PORT: ${STREAMLIT_PORT}
         WORKDIR_PATH: ${WORKDIR_PATH}
-        SQLITE_DB_PATH: ${SQLITE_DB_PATH}
     env_file:
       - .env
     ports:
       - "${STREAMLIT_PORT}:${STREAMLIT_PORT}"
     volumes:
       - './:${WORKDIR_PATH}'
-      - vol-sqlite-db:${SQLITE_DB_PATH}
     networks:
       - net-system
     depends_on:
@@ -47,8 +45,6 @@ services:
       pgsql:
         condition: service_healthy
 volumes:
-  vol-sqlite-db:
-    driver: local
   vol-pgsql:
     driver: local
   vol-pgadmin:

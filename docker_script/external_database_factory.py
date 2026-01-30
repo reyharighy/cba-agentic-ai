@@ -120,7 +120,10 @@ def main() -> None:
         ),
     )
 
-    metadata.create_all(engine)
+    metadata.create_all(
+        bind=engine,
+        checkfirst=True,
+    )
 
     df: DataFrame = pd.read_csv("./docker_script/synthetic_data.csv")  # type: ignore
     df["created_at"] = pd.to_datetime(df["created_at"])

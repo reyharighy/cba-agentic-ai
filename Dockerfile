@@ -7,13 +7,9 @@ WORKDIR ${WORKDIR_PATH}
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
-COPY . .
-
-ARG SQLITE_DB_PATH
-RUN mkdir -p ${SQLITE_DB_PATH}
+COPY . ./
 
 RUN useradd -m -u 1000 streamlituser
-RUN chown -R streamlituser:streamlituser ${SQLITE_DB_PATH}
 RUN chown -R streamlituser:streamlituser ${WORKDIR_PATH}
 
 USER streamlituser

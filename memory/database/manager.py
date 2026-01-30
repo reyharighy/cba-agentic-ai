@@ -37,7 +37,10 @@ class MemoryManager:
 
         :param self: Description
         """
-        table_schema_metadata.create_all(self.internal)
+        table_schema_metadata.create_all(
+            bind=self.internal,
+            checkfirst=True,
+        )
 
     def index_chat_history(self) -> list[ChatHistory]:
         """
