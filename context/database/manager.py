@@ -47,6 +47,9 @@ class ContextManager:
 
         with self.external.begin() as connection:
             for table_name in table_names:
+                if table_name in ["chat_histories", "short_memories"]:
+                    continue
+
                 columns: list[dict[str, Any]] = inspector.get_columns(table_name)
                 table_columns[table_name] = []
 
