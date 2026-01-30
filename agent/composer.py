@@ -1,5 +1,6 @@
 # pyright: reportPrivateUsage=false
 # pyright: reportMissingTypeStubs=false
+# pyright: reportUnknownMemberType=false
 
 # standard
 import sys
@@ -15,7 +16,7 @@ import sqlglot
 from e2b_code_interpreter.code_interpreter_sync import (
     Sandbox,
 )
-from pydantic import BaseModel
+from groq import BadRequestError
 from langchain_core.language_models import (
     BaseChatModel,
     LanguageModelInput,
@@ -34,6 +35,7 @@ from pandas.api.types import (
     is_object_dtype,
 )
 from pandas.errors import EmptyDataError
+from pydantic import BaseModel
 from sqlglot import (
     exp,
     Expression,
@@ -91,19 +93,31 @@ class Composer:
         if schema:
             llm = cast(
                 typ=Runnable[LanguageModelInput, dict[Any, Any] | BaseModel],
-                val=language_model.with_structured_output(  # type: ignore
+                val=language_model.with_structured_output(
                     schema=schema,
                     method="json_schema",
                 ),
             )
+
+            llm.with_retry(
+                retry_if_exception_type=(BadRequestError,),
+                stop_after_attempt=3
+            )
         else:
             llm = language_model
 
-        llm_input: list[AnyMessage] = self.__prepare_language_model_message_input(
-            system_message=system_message,
-            state=state,
-            include_conversation=include_conversation,
-        )
+        if state["context_distillation"] and not include_conversation:
+            contextual_goal: HumanMessage = HumanMessage(cast(str, state["context_distillation"].content))
+            llm_input: list[AnyMessage] = [system_message, contextual_goal]
+        else:
+            llm_input: list[AnyMessage] = self.__prepare_language_model_message_input(
+                system_message=system_message,
+                state=state,
+                include_conversation=include_conversation,
+            )
+
+        if state["analytical_result"]:
+            llm_input.extend([state["analytical_result"]])
 
         return (llm, llm_input)
 
@@ -119,9 +133,6 @@ class Composer:
             llm_input.extend(self.__get_relevant_conversation(state))
 
         llm_input.extend(state["messages"])
-
-        if state["analytical_result"]:
-            llm_input.extend([state["analytical_result"]])
 
         return llm_input
 
@@ -209,7 +220,7 @@ class Composer:
             context_prompt: str = "\n\nDataframe schema and sample values in each columns:"
             col_value_dict: dict[str, tuple[str, Any]] = {}
             dset_attrs: str = ""
-            df: pd.DataFrame = pd.read_csv(dataset_file_path)  # type: ignore
+            df: pd.DataFrame = pd.read_csv(dataset_file_path)
 
             for column in df.columns:
                 if is_object_dtype(df[column]):
@@ -272,7 +283,7 @@ class Composer:
         Validate the SQL query against the provided database schema.
         """
         try:
-            tree: Expression = sqlglot.parse_one(sql_query)  # type: ignore
+            tree: Expression = sqlglot.parse_one(sql_query)
 
             if forbidden := tree.find(exp.Delete, exp.Update, exp.Insert, exp.Drop):
                 return ValueError(f"Forbidden SQL operation: {str(forbidden).split()[0]}")
@@ -302,7 +313,7 @@ class Composer:
         sandbox: Sandbox = Sandbox.create()
 
         with open(dataset_file_path, "rb") as dataset:
-            sandbox.files.write("dataset.csv", dataset.read())  # type: ignore
+            sandbox.files.write("dataset.csv", dataset.read())
 
         return sandbox
 
@@ -315,7 +326,7 @@ class Composer:
 
             for analytical_step in state["analytical_plan"].plan:
                 for line in analytical_step.python_code.replace("\\n", "\n").replace("\\t", "\t").split("\n"):
-                    code += "\n" + line.strip() + "\n"
+                    code += "\n" + line + "\n"
 
             return code
 
@@ -457,7 +468,7 @@ class Composer:
             code: str = runtime.context.infographic_sandbox_bootstrap
 
             for line in state["infographic_plan"].python_code.replace("\\n", "\n").replace("\\t", "\t").split("\n"):
-                code += "\n" + line.strip() + "\n" if line.strip() != "fig" else ""
+                code += "\n" + line + "\n"
 
             code += "\n_ = None" if on_sandbox else ""
 

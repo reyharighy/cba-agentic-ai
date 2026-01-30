@@ -1,3 +1,5 @@
+# pyright: reportUnknownMemberType=false
+
 # standard
 from collections.abc import Sequence
 from typing import (
@@ -123,7 +125,7 @@ class ContextManager:
         """
         try:
             with self.external.begin() as connection:
-                df: pd.DataFrame = pd.read_sql(text(statement), connection)  # type: ignore
+                df: pd.DataFrame = pd.read_sql(text(statement), connection)
                 df.to_csv(
                     dataset_file_path,
                     index=False,

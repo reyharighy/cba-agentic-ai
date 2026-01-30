@@ -1,4 +1,5 @@
 # pyright: reportMissingTypeStubs=false
+# pyright: reportUnknownMemberType=false
 
 # standard
 from collections.abc import Generator
@@ -50,7 +51,7 @@ class UserInterface:
 
     def run(self) -> None:
         """
-        Runs the user interface, handling session initialization, chat history display, chat input processing, and toast 
+        Runs the user interface, handling session initialization, chat history display, chat input processing, and toast
         messages.
         """
         self.__init_session_and_config()
@@ -173,6 +174,7 @@ class UserInterface:
             intent_comprehension=None,
             request_classification=None,
             analytical_requirement=None,
+            context_distillation=None,
             data_availability=None,
             data_retrieval_plan=None,
             data_retrieval_plan_execution=None,
@@ -208,7 +210,7 @@ class UserInterface:
             self.__render_graph_element(graph_placeholder, None)
 
         try:
-            for chunk in graph.stream(  # type: ignore
+            for chunk in graph.stream(
                 input=graph_input,
                 context=graph_context,
                 stream_mode="updates",

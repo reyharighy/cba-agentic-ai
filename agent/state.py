@@ -33,6 +33,7 @@ class State(MessagesState):
     intent_comprehension: IntentComprehension | None
     request_classification: RequestClassification | None
     analytical_requirement: AnalyticalRequirement | None
+    context_distillation: AIMessage | None
     data_availability: DataAvailability | None
     data_retrieval_plan: DataRetrievalPlan | None
     data_retrieval_plan_execution: ValueError | None

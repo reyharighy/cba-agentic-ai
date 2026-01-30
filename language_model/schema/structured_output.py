@@ -10,7 +10,7 @@ from pydantic import (
 
 class IntentComprehension(BaseModel):
     """
-    Represents the identification of relevant conversational turns that provide necessary context to accurately understand 
+    Represents the identification of relevant conversational turns that provide necessary context to accurately understand
     and address the user's request.
     """
 
@@ -80,7 +80,7 @@ class DataAvailability(BaseModel):
 
 class DataRetrievalPlan(BaseModel):
     """
-    Specifies a structured plan to extract and prepare data from an external database into a dataframe before the analytical 
+    Specifies a structured plan to extract and prepare data from an external database into a dataframe before the analytical
     execution.
     """
 

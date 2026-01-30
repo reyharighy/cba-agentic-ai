@@ -174,7 +174,7 @@ class Graph:
         self,
         state: State,
         runtime: Runtime[Context],
-    ) -> Command[Literal["direct_response", "data_availability"]]:
+    ) -> Command[Literal["direct_response", "context_distillation"]]:
         """
         Node to handle analytical requirement.
         """
@@ -194,10 +194,10 @@ class Graph:
 
         if serialized_output.analytical_process_is_required:
             return Command(
-                goto="data_availability",
+                goto="context_distillation",
                 update={
                     "ui_payload": "",
-                    "next_node": "data_availability",
+                    "next_node": "context_distillation",
                     "analytical_requirement": serialized_output,
                 },
             )
@@ -233,6 +233,28 @@ class Graph:
             "messages": [llm_output],
         }
 
+    def __context_distillation(self, state: State, runtime: Runtime[Context]) -> dict[str, Any]:
+        """
+        Node to handle context distillation.
+        """
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        system_message: SystemMessage = SystemMessage(system_prompt)
+
+        llm, llm_input = self.composer.prepare_invocation(
+            system_message=system_message,
+            state=state,
+            language_model=self.language_model,
+            include_conversation=True,
+        )
+
+        llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
+
+        return {
+            "ui_payload": "",
+            "next_node": "data_availability",
+            "context_distillation": llm_output,
+        }
+
     def __data_availability(
         self, state: State, runtime: Runtime[Context]
     ) -> Command[
@@ -253,7 +275,6 @@ class Graph:
             state=state,
             language_model=self.language_model,
             schema=DataAvailability,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -332,7 +353,6 @@ class Graph:
             state=state,
             language_model=self.language_model,
             schema=DataRetrievalPlan,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -420,7 +440,6 @@ class Graph:
             state=state,
             language_model=self.language_model,
             schema=DataRetrievalPlanObservation,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -478,7 +497,6 @@ class Graph:
             state=state,
             language_model=self.language_model,
             schema=AnalyticalPlan,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -558,7 +576,6 @@ class Graph:
             state=state,
             language_model=self.language_model,
             schema=AnalyticalPlanObservation,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -628,7 +645,6 @@ class Graph:
             state=state,
             language_model=self.language_model,
             schema=InfographicRequirement,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -697,7 +713,6 @@ class Graph:
             state=state,
             language_model=self.language_model,
             schema=InfographicPlan,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -797,7 +812,6 @@ class Graph:
             state=state,
             language_model=self.language_model,
             schema=InfographicPlanObservation,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -899,6 +913,11 @@ class Graph:
         )
 
         self.graph_builder.add_node(
+            node="context_distillation",
+            action=self.__context_distillation,
+        )
+
+        self.graph_builder.add_node(
             node="data_availability",
             action=self.__data_availability,
         )
@@ -980,6 +999,8 @@ class Graph:
         self.graph_builder.add_edge(start_key="punt_response", end_key=END)
 
         self.graph_builder.add_edge(start_key="direct_response", end_key="summarization")
+
+        self.graph_builder.add_edge(start_key="context_distillation", end_key="data_availability")
 
         self.graph_builder.add_edge(
             start_key="data_unavailability_response",

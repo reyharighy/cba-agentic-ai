@@ -1,3 +1,5 @@
+# pyright: reportUnknownMemberType=false
+
 # standard
 import os
 from typing import Any
@@ -30,8 +32,8 @@ from context.database.config import (
 def main() -> None:
     """
     Populate the external database with synthetic sales transaction data.
-    
-    This function checks an environment variable to determine if seeding is enabled. If enabled, it creates the necessary 
+
+    This function checks an environment variable to determine if seeding is enabled. If enabled, it creates the necessary
     table schema and inserts data from a CSV file.
     """
     if os.getenv("ENABLE_EXTERNAL_DB_SEEDING", "true").lower() != "true":
@@ -125,12 +127,12 @@ def main() -> None:
         checkfirst=True,
     )
 
-    df: DataFrame = pd.read_csv("./docker_script/synthetic_data.csv")  # type: ignore
+    df: DataFrame = pd.read_csv("./docker_script/synthetic_data.csv")
     df["created_at"] = pd.to_datetime(df["created_at"])
 
     records: list[dict[str, Any]] = [
         {str(k): v for k, v in row.items()}
-        for row in df.to_dict(orient="records")  # type: ignore
+        for row in df.to_dict(orient="records")
     ]
 
     for r in records:
