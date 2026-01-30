@@ -1,9 +1,3 @@
-"""
-Database table definitions for internal context storage.
-
-This module defines table schemas used to persist
-contextual memory data within the system.
-"""
 # standard
 from datetime import datetime
 
@@ -25,7 +19,12 @@ chat_histories = Table(
     Column("turn_num", Integer, nullable=False),
     Column("role", String, nullable=False),
     Column("content", String, nullable=False),
-    Column("created_at", DateTime, nullable=False, default=datetime.now),
+    Column(
+        "created_at",
+        DateTime,
+        nullable=False,
+        default=datetime.now,
+    ),
 )
 
 short_memories = Table(
@@ -34,5 +33,10 @@ short_memories = Table(
     Column("turn_num", Integer, nullable=False),
     Column("summary", String, nullable=False),
     Column("sql_query", String, nullable=False),
-    Column("created_at", DateTime, nullable=False, default=datetime.now),
+    Column(
+        "created_at",
+        DateTime,
+        nullable=False,
+        default=datetime.now,
+    ),
 )

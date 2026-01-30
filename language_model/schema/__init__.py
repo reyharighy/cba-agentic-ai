@@ -1,22 +1,16 @@
-"""
-Schemas defining structured contracts.
-
-This package contains schema definitions that constrain and validate
-the outputs produced by language models during node execution,
-ensuring predictable and machine-interpretable results.
-"""
+# internal
 from .structured_output import (
     IntentComprehension,
     RequestClassification,
     AnalyticalRequirement,
     DataAvailability,
-    DataRetrievalPlanning,
-    DataRetrievalObservation,
-    AnalyticalPlanning,
+    DataRetrievalPlan,
+    DataRetrievalPlanObservation,
+    AnalyticalPlan,
     AnalyticalPlanObservation,
     InfographicRequirement,
-    InfographicPlanning,
-    InfographicPlanObservation
+    InfographicPlan,
+    InfographicPlanObservation,
 )
 
 __all__ = [
@@ -24,11 +18,11 @@ __all__ = [
     "RequestClassification",
     "AnalyticalRequirement",
     "DataAvailability",
-    "DataRetrievalPlanning",
-    "DataRetrievalObservation",
-    "AnalyticalPlanning",
+    "DataRetrievalPlan",
+    "DataRetrievalPlanObservation",
+    "AnalyticalPlan",
     "AnalyticalPlanObservation",
     "InfographicRequirement",
-    "InfographicPlanning",
-    "InfographicPlanObservation"
+    "InfographicPlan",
+    "InfographicPlanObservation",
 ]

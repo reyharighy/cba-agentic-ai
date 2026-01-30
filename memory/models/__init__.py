@@ -1,9 +1,4 @@
-"""
-Internal data models for the conversational system.
-
-This package defines schemas and table references used to represent
-contextual memory within the system.
-"""
+# internal
 from .chat_history import (
     ChatHistory,
     ChatHistoryCreate,
@@ -29,5 +24,5 @@ __all__ = [
     "ShortMemoryShow",
     "chat_histories",
     "short_memories",
-    "table_schema_metadata"
+    "table_schema_metadata",
 ]

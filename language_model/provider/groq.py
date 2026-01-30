@@ -1,8 +1,7 @@
-"""
-Chat model provided by Groq from langchain_core interface of BaseChatModel.
-"""
 # third-party
-from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.language_models.chat_models import (
+    BaseChatModel,
+)
 from langchain_groq import ChatGroq
 
 groq_gpt_120b_low: BaseChatModel = ChatGroq(
@@ -36,5 +35,5 @@ groq_qwen: BaseChatModel = ChatGroq(
     model="meta-llama/llama-4-maverick-17b-128e-instruct",
     temperature=0,
     max_tokens=None,
-    timeout=None
+    timeout=None,
 )

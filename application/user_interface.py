@@ -1,28 +1,29 @@
-"""
-Streamlit-based user interface implementation.
+# pyright: reportMissingTypeStubs=false
 
-This module defines the primary UI layer responsible for rendering chat
-interactions, streaming graph execution output, and coordinating user input
-with the orchestration graph.
-"""
 # standard
+from collections.abc import Generator
 from pathlib import Path
 from time import sleep
-from typing import (
-    Dict,
-    Generator,
-    List,
-    Optional,
-    Union,
-)
+from typing import Any
 
 # third-party
 import streamlit as st
-from streamlit.delta_generator import DeltaGenerator
+from streamlit.delta_generator import (
+    DeltaGenerator,
+)
 from langchain_core.messages import HumanMessage
-from langgraph.graph.state import CompiledStateGraph
+from langgraph.graph.state import (
+    CompiledStateGraph,
+)
 
 # internal
+from .cache import (
+    load_graph,
+    load_prompts_set,
+    load_analytical_sandbox_bootstrap,
+    load_infographic_sandbox_bootstrap,
+    load_infographic,
+)
 from .runtime import SessionMemory
 from agent import (
     Context,
@@ -32,39 +33,34 @@ from agent.stages import (
     enable_interactive_graph,
     images_source_path,
 )
-from cache import (
-    load_graph,
-    load_prompts_set,
-    load_analytical_sandbox_bootstrap,
-    load_infographic_sandbox_bootstrap,
-    load_infographic,
-)
 from memory.database import MemoryManager
-from memory.infographic import infographic_dir_path
+from memory.infographic import (
+    infographic_dir_path,
+)
 from memory.models import ChatHistory
+
 
 class UserInterface:
     def __init__(self, memory_manager: MemoryManager) -> None:
         """
-        Initialize the user interface with required persistence dependencies.
-
-        The database manager is used exclusively for retrieving chat history.
+        Initializes the UserInterface with the provided MemoryManager.
         """
         self.session_memory: SessionMemory = SessionMemory()
         self.memory_manager: MemoryManager = memory_manager
 
     def run(self) -> None:
         """
-        Entry point for rendering and running the user interface.
+        Runs the user interface, handling session initialization, chat history display, chat input processing, and toast 
+        messages.
         """
-        self._init_session_and_config()
-        self._display_chat_history()
-        self._process_chat_input()
-        self._show_toast_message()
+        self.__init_session_and_config()
+        self.__display_chat_history()
+        self.__process_chat_input()
+        self.__show_toast_message()
 
-    def _init_session_and_config(self) -> None:
+    def __init_session_and_config(self) -> None:
         """
-        Initialize Streamlit session state and application configuration.
+        Initializes the session state and configures the Streamlit page.
         """
         if st.session_state.get("init_app") is None:
             self.memory_manager.init_internal_database()
@@ -78,80 +74,72 @@ class UserInterface:
         st.set_page_config(
             page_title="CBA - Agentic AI",
             layout="wide",
-            initial_sidebar_state="auto"
+            initial_sidebar_state="auto",
         )
 
-    def _display_chat_history(self) -> None:
+    def __display_chat_history(self) -> None:
         """
-        Render persisted chat history into the UI.
-
-        Chat turns are grouped and displayed sequentially to reflect prior
-        interactions within the current session.
+        Displays the chat history from the memory manager.
         """
-        chat_history: List[ChatHistory] = self.memory_manager.index_chat_history()
+        chat_history: list[ChatHistory] = self.memory_manager.index_chat_history()
         self.session_memory.turn_num = max(chat.turn_num for chat in chat_history) if chat_history else 0
 
         if self.session_memory.turn_num > 0:
-            message_block: List[Union[ChatHistory, str]] = []
+            message_block: list[ChatHistory | str] = []
 
             for chat in chat_history:
                 message_block.append(chat)
 
                 if len(message_block) == 2:
-                    self._render_chat_turn_block(chat_turn=message_block)
+                    self.__render_chat_turn_block(chat_turn=message_block)
                     message_block = []
 
-    def _process_chat_input(self) -> None:
+    def __process_chat_input(self) -> None:
         """
-        Capture and process new user input.
-
-        When a new prompt is submitted, the UI immediately renders the input
-        and triggers a rerun after graph execution.
+        Processes user chat input and triggers graph invocation.
         """
         if chat_input := st.chat_input("Chat with AI"):
             self.session_memory.chat_input = chat_input
-            self._render_chat_turn_block(on_processing_request=True)
+            self.__render_chat_turn_block(on_processing_request=True)
             st.rerun()
 
-    def _render_chat_turn_block(self, on_processing_request: bool = False, chat_turn: List[Union[ChatHistory, str]] = []) -> None:
+    def __render_chat_turn_block(
+        self, on_processing_request: bool = False, chat_turn: list[ChatHistory | str] = []
+    ) -> None:
         """
-        Render a single chat turn block.
-
-        A chat turn consists of a user prompt and a corresponding system response,
-        optionally displaying streamed output during active processing.
+        Renders a chat turn block in the user interface.
         """
         st.divider()
 
-        with st.expander('Click to toggle cell', expanded=True):
+        with st.expander("Click to toggle cell", expanded=True):
             with st.container(border=True):
-                st.badge('Your Prompt', color='orange')
+                st.badge("Your Prompt", color="orange")
 
-                self._render_turn_element(
+                self.__render_turn_element(
                     input_type=True,
                     on_processing_request=on_processing_request,
-                    turn_element=chat_turn[0] if not on_processing_request else None
+                    turn_element=chat_turn[0] if not on_processing_request else None,
                 )
 
-            st.badge('System Response', color='blue')
+            st.badge("System Response", color="blue")
 
-            self._render_turn_element(
+            self.__render_turn_element(
                 input_type=False,
                 on_processing_request=on_processing_request,
-                turn_element=chat_turn[1] if not on_processing_request else None
+                turn_element=chat_turn[1] if not on_processing_request else None,
             )
 
             if chat_turn and isinstance(chat_turn[-1], ChatHistory):
-                self._render_infographic_turn_block(chat_turn[-1].turn_num)
-    
-    def _render_turn_element(self, input_type: bool, on_processing_request: bool, turn_element: Optional[Union[ChatHistory, str]]) -> None:
-        """
-        Render an individual element within a chat turn.
+                self.__render_infographic_turn_block(chat_turn[-1].turn_num)
 
-        Depending on the execution state, this method either displays persisted
-        content or streams live output from the graph execution.
+    def __render_turn_element(
+        self, input_type: bool, on_processing_request: bool, turn_element: ChatHistory | str | None
+    ) -> None:
+        """
+        Renders a turn element in the user interface.
         """
         if on_processing_request:
-            st.write(self.session_memory.chat_input) if input_type else self._graph_invocation()
+            st.write(self.session_memory.chat_input) if input_type else self.__graph_invocation()
         elif isinstance(turn_element, ChatHistory):
             st.write(turn_element.content)
         elif isinstance(turn_element, str):
@@ -159,7 +147,10 @@ class UserInterface:
         else:
             raise ValueError("'turn_element' must not be None when 'on_processing_request' is False")
 
-    def _render_infographic_turn_block(self, turn_num: int) -> None:
+    def __render_infographic_turn_block(self, turn_num: int) -> None:
+        """
+        Renders the infographic turn block for the specified turn number.
+        """
         infographic_object_dir_path: Path = infographic_dir_path / f"turn_num_{turn_num}"
 
         if infographic_object_dir_path.exists():
@@ -169,13 +160,9 @@ class UserInterface:
             if loader and module:
                 loader.exec_module(module)
 
-    def _graph_invocation(self) -> None:
+    def __graph_invocation(self) -> None:
         """
-        Invoke the orchestration graph and stream execution updates to the UI.
-
-        This method bridges user input to the compiled state graph, monitors
-        node-level updates, and renders intermediate status and final outputs
-        as they become available.
+        Invokes the state graph and streams the output to the user interface.
         """
         graph: CompiledStateGraph[State, Context] = load_graph()
 
@@ -187,120 +174,66 @@ class UserInterface:
             request_classification=None,
             analytical_requirement=None,
             data_availability=None,
-            data_retrieval_planning=None,
-            data_retrieval_execution=None,
-            data_retrieval_observation=None,
-            analytical_planning=None,
+            data_retrieval_plan=None,
+            data_retrieval_plan_execution=None,
+            data_retrieval_plan_observation=None,
+            analytical_plan=None,
             analytical_plan_execution=None,
             analytical_plan_observation=None,
             analytical_result=None,
             infographic_requirement=None,
-            infographic_planning=None,
+            infographic_plan=None,
             infographic_plan_execution=None,
             infographic_plan_observation=None,
-            summarization=None
+            summarization=None,
         )
 
         graph_context: Context = Context(
             turn_num=self.session_memory.turn_num,
             prompts_set=load_prompts_set(),
             analytical_sandbox_bootstrap=load_analytical_sandbox_bootstrap(),
-            infographic_sandbox_bootstrap=load_infographic_sandbox_bootstrap()
+            infographic_sandbox_bootstrap=load_infographic_sandbox_bootstrap(),
         )
 
-        # end_nodes: List[str] = ["punt_response", "summarization"]
-        # pass_through_nodes: List[str] = ["data_retrieval", "sandbox_environment"]
-        status_box: DeltaGenerator = st.status("Understanding request intent", expanded=True)
-        column_containers: List[DeltaGenerator] = []
-        graph_placeholder: Optional[DeltaGenerator] = None
+        status_box: DeltaGenerator = st.status(label="Understanding request intent", expanded=True)
+
+        column_containers: list[DeltaGenerator] = []
+        graph_placeholder: DeltaGenerator | None = None
 
         if enable_interactive_graph:
             column_containers = status_box.columns([0.4, 0.6], border=True)
             column_containers[0].subheader("Graph Execution Runtime Visualization")
             column_containers[1].subheader("Thinking Output")
             graph_placeholder = column_containers[0].empty()
-            self._render_graph_element(graph_placeholder, None)
+            self.__render_graph_element(graph_placeholder, None)
 
         try:
-            for chunk in graph.stream(input=graph_input, context=graph_context, stream_mode="updates"):
+            for chunk in graph.stream(  # type: ignore
+                input=graph_input,
+                context=graph_context,
+                stream_mode="updates",
+            ):
                 st.write(chunk)
-                # if not isinstance(chunk, Dict):
-                #     continue
-
-                # node_name, node_state = next(iter(chunk.items()))
-
-                # if not node_state or not isinstance(node_state, Dict):
-                #     continue
-
-                # if ui_payload := node_state.get("ui_payload"):
-                #     status_box.update(label=ui_payload)
-
-                # if node_name in pass_through_nodes:
-                #     action_output: str = "Extracted business data." if node_name == "data_retrieval" else "Executed computational plan."
-
-                #     if column_containers:
-                #         column_containers[1].write(action_output)
-                #     else:
-                #         status_box.write(action_output)
-
-                #     if enable_interactive_graph and graph_placeholder and node_name not in end_nodes:
-                #         self._render_graph_element(graph_placeholder, node_state)
-
-                #     continue
-
-                # try:
-                #     if node_name == "self_correction" or node_name == "self_reflection":
-                #         self.session_memory.thinking = node_state["computation_planning"].rationale
-                #     else:
-                #         self.session_memory.thinking = node_state[node_name].rationale
-
-                #     if enable_interactive_graph and graph_placeholder and node_name not in end_nodes:
-                #         column_containers[1].write(self._stream_generator)
-                #         self._render_graph_element(graph_placeholder, node_state)
-                #     else:
-                #         status_box.write(self._stream_generator)
-
-                # except Exception as _:
-                #     if node_name != "summarization":
-                #         self.session_memory.chat_output = node_state["messages"][-1].content
-                #         st.write(self._stream_generator)
-
-                #         if enable_interactive_graph and graph_placeholder and node_name != "punt_response" and node_state["next_node"] == "summarization":
-                #             self._render_graph_element(graph_placeholder, node_state)
-
-                #     if node_name == "summarization":
-                #         st.session_state["success_toast"] = True
-                #     elif node_name == "punt_response":
-                #         st.session_state["punt_toast"] = True
-                #         st.session_state["punt_response"].append(self.session_memory.chat_input)
-                #         st.session_state["punt_response"].append(self.session_memory.chat_output)
-                #         status_box.update(state="complete")
+                st.write(self.__stream_generator)
 
         except Exception as e:
             st.session_state["error_toast"] = True
             st.error(f"Graph execution failed: {e}")
 
-        # sleep(1000)
-
-    def _render_graph_element(self, graph_placeholder: DeltaGenerator, node_state: Optional[Dict]) -> None:
+    def __render_graph_element(self, graph_placeholder: DeltaGenerator, node_state: dict[str, Any] | None) -> None:
         """
-        Render the current execution stage of the orchestration graph.
-
-        This method updates the graph visualization in the UI by displaying
-        a static image corresponding to the graph's next node. When no node
-        state is available, it renders the initial entry point of the graph.
+        Renders the graph element in the user interface.
         """
         graph_placeholder.image(
-            image=f"{images_source_path}/{node_state["next_node"]}.png" if node_state else f'{images_source_path}/intent_comprehension.png',
+            image=f"{images_source_path}/{node_state['next_node']}.png"
+            if node_state
+            else f"{images_source_path}/intent_comprehension.png",
             width="stretch",
         )
 
-    def _stream_generator(self) -> Generator:
+    def __stream_generator(self) -> Generator[str, None, None]:
         """
-        Generate streamed text output for incremental rendering.
-
-        This generator yields tokens derived from either intermediate reasoning
-        or final chat output, enabling a progressive display experience.
+        Generator to stream the thinking or chat output word by word.
         """
         if self.session_memory.thinking:
             for word in str(self.session_memory.thinking).split(" "):
@@ -314,35 +247,32 @@ class UserInterface:
                 yield word + " "
                 sleep(0.01)
 
-    def _show_toast_message(self) -> None:
+    def __show_toast_message(self) -> None:
         """
-        Display contextual toast notifications to the user.
-
-        Notifications reflect execution outcomes such as success, domain mismatch,
-        or system failure.
+        Shows toast messages based on the session state.
         """
         if st.session_state["success_toast"]:
             st.session_state["success_toast"] = False
 
             st.toast(
-                body="###### **Your request is completed.**", 
-                duration="long"
+                body="###### **Your request is completed.**",
+                duration="long",
             )
 
         if st.session_state["punt_toast"]:
-            self._render_chat_turn_block(chat_turn=st.session_state["punt_response"])
+            self.__render_chat_turn_block(chat_turn=st.session_state["punt_response"])
             st.session_state["punt_toast"] = False
             st.session_state["punt_response"] = []
 
             st.toast(
-                body="###### **Your request is out of business analytics domain. This chat turn will not be persisted.**", 
-                duration="long"
+                body="###### **Your request is out of business analytics domain. This chat turn will not be persisted.**",
+                duration="long",
             )
 
         if st.session_state["error_toast"]:
             st.session_state["error_toast"] = False
 
             st.toast(
-                body="###### **System fails to process your request. Please try again.**", 
-                duration="long"
+                body="###### **System fails to process your request. Please try again.**",
+                duration="long",
             )

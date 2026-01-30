@@ -1,17 +1,5 @@
-"""
-Output schemas for LLM-driven node execution.
-
-This module defines structured output formats that language models
-must conform to when producing results for specific system nodes.
-These schemas act as strict interfaces between probabilistic model
-generation and deterministic system logic.
-"""
 # standard
-from typing import (
-    Literal,
-    List,
-    Optional,
-)
+from typing import Literal
 
 # third-party
 from pydantic import (
@@ -19,207 +7,238 @@ from pydantic import (
     Field,
 )
 
+
 class IntentComprehension(BaseModel):
     """
-    Captures which prior conversation turns are required to understand or fulfill the current user request.
+    Represents the identification of relevant conversational turns that provide necessary context to accurately understand 
+    and address the user's request.
     """
-    relevant_turns: List[str] = Field(
+
+    relevant_turns: list[str] = Field(
         ...,
-        description="Ordered list of turn numbers that should be retrieved and inspected in order to help answering the user's request"
+        description="List of relevant conversational turns that provide necessary context to understand the user's request",
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
+
 
 class RequestClassification(BaseModel):
     """
-    Represents the result of classifying whether a user request falls within the business analytics domain.
+    Represents a decision contract that determines whether the user's request falls within the business analytical domain.
     """
+
     request_is_business_analytical_domain: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the user's request is within business analytical domain. "
+            "The value must be set to True if the user's request is within the business analytical domain. "
             "Otherwise, set the value to False."
-        )
+        ),
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
+
 
 class AnalyticalRequirement(BaseModel):
     """
-    Represents a decision contract that determines whether answering the user's request requires an analytical process.
+    Represents a decision on whether analytical process is required to answer the user's business analytical request.
     """
+
     analytical_process_is_required: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the user's request requires analytical process to the answer the user's request. "
+            "The value must be set to True if the analytical process is required to answer the user's request. "
             "Otherwise, set the value to False."
-        )
+        ),
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
+
 
 class DataAvailability(BaseModel):
     """
-    Indicates whether the required business data exists in the external database to support analytical processing for the user's request.
+    Represents a decision on whether the required data is available in an external database to support the analytical process.
     """
+
     data_is_available: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the data is available in external database in order to answer the user's request"
+            "The value must be set to True if the required data is available in an external database. "
             "Otherwise, set the value to False."
-        )
+        ),
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
 
-class DataRetrievalPlanning(BaseModel):
+
+class DataRetrievalPlan(BaseModel):
     """
-    Defines a data extraction plan by generating a SQL query that retrieves raw data from an external database into an analytical workspace.
+    Specifies a structured plan to extract and prepare data from an external database into a dataframe before the analytical 
+    execution.
     """
-    sql_query: Optional[str] = Field(
+
+    sql_query: str = Field(
         ...,
-        description="The SQL Query to execute on external database in order to extract and prepare data into dataframe before analytical execution"
+        description="SQL query to retrieve the required data from the external database",
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
 
-class DataRetrievalObservation(BaseModel):
+
+class DataRetrievalPlanObservation(BaseModel):
     """
-    Represents an evaluation of whether retrieved raw data is sufficient to support the intended downstream analytical process.
+    Represents an evaluation of whether data retrieval execution results sufficiently fulfil the data retrieval plan.
     """
+
     result_is_sufficient: bool = Field(
         ...,
         description=(
             "The value must be set to True if the execution result fulfils the data retrieval planning. "
             "Otherwise, set the value to False."
-        )
+        ),
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
+
 
 class AnalyticalStep(BaseModel):
     """
-    Each step defines how data should be transformed or processed programmatically, without executing the operation or interpreting the result.
+    Represents a single computational step within an analytical plan.
     """
+
     number: int = Field(
         ...,
         ge=1,
-        description="Sequential step number, starting from 1"
+        description="Sequential number of the analytical step",
     )
-    input_df: Optional[str] = Field(
+    input_df: str = Field(
         ...,
-        description="Name of the input dataframe variable"
+        description="Name of the input dataframe variable",
     )
     output_df: str = Field(
         ...,
-        description="Name of the output dataframe variable"
+        description="Name of the output dataframe variable",
     )
     python_code: str = Field(
         ...,
-        description="Python code in order to execute based on the current step"
+        description="Python code to execute for this analytical step",
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
 
-class AnalyticalPlanning(BaseModel):
+
+class AnalyticalPlan(BaseModel):
     """
-    This plan specifies the analysis type and an ordered sequence of computational steps that can be executed later in a controlled sandbox environment.
+    Specifies a structured analytical plan to answer the user's business analytical request.
     """
-    analysis_type: Literal["descriptive", "diagnostic", "predictive", "inferential"] = Field(
+
+    analysis_type: Literal[
+        "descriptive",
+        "diagnostic",
+        "predictive",
+        "inferential",
+    ] = Field(
         ...,
-        description="Analysis type to take in order to answer the user's request"
+        description="The type of analysis to be performed to answer the user's request",
     )
-    plan: List[AnalyticalStep] = Field(
+    plan: list[AnalyticalStep] = Field(
         ...,
-        description="Ordered list of analytical steps to take in order to answer the user's request"
+        description="List of analytical steps to be executed sequentially",
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
+
 
 class AnalyticalPlanObservation(BaseModel):
     """
-    Represents an evaluation of whether analytical execution results sufficiently fulfil the analytical plan and support answering the user's business analytical request.
+    Evaluate whether the analytical execution results sufficiently fulfil the analytical plan.
     """
+
     result_is_sufficient: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the execution result fulfils the analytical planning. "
+            "The value must be set to True if the execution result fulfils the analytical plan. "
             "Otherwise, set the value to False."
-        )
+        ),
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
+
 
 class InfographicRequirement(BaseModel):
     """
-    Represents a decision on whether a visual infographic is required to enhance the clarity and comprehension of an existing analytical result.
+    Represents a decision on whether infographics is required to enhance the comprehension of the analytical results.
     """
+
     infographic_is_required: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the infographics is required to enhance the analytical results. "
+            "The value must be set to True if infographics is required to enhance comprehension. "
             "Otherwise, set the value to False."
-        )
+        ),
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
 
-class InfographicPlanning(BaseModel):
+
+class InfographicPlan(BaseModel):
     """
-    Specifies a visual infographics designed to improve comprehension of existing analytical result.
+    Specifies a structured infographic plan to visually communicate the analytical results.
     """
+
     visual_intent: Literal[
         "trend",
         "comparison",
         "distribution",
         "composition",
         "relationship",
-        "ranking"
+        "ranking",
     ] = Field(
         ...,
-        description="The primary communication purpose of the infographic"
+        description="The primary visual intent of the infographic to communicate the analytical results",
     )
     python_code: str = Field(
         ...,
-        description="Python code in order to execute based on the infographic rationale using Plotly library"
+        description="Python code to generate the infographic using appropriate visualization libraries",
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )
+
 
 class InfographicPlanObservation(BaseModel):
     """
-    Evaluate whether the generated code logically matches the intended visual communication purpose based on the existing analytical result.
+    Evaluate whether the generated infographic code sufficiently matches the intended visual communication purpose.
     """
+
     result_is_sufficient: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the generated code logically matches the intended visual communication purpose. "
+            "The value must be set to True if the generated infographic fulfils the intended visual communication purpose. "
             "Otherwise, set the value to False."
-        )
+        ),
     )
     rationale: str = Field(
         ...,
-        description="Clear and detailed explanation in English"
+        description="Clear and detailed explanation in English",
     )

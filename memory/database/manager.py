@@ -1,19 +1,9 @@
-"""
-Database management abstraction.
-
-This module defines a unified interface for interacting with both
-internal system storage used by the application.
-"""
-# internal
-from typing import (
-    List,
-    Optional,
-)
-
 # third-party
+from typing import Any
 from sqlalchemy import (
     CursorResult,
     Engine,
+    Row,
     create_engine,
     select,
 )
@@ -29,37 +19,39 @@ from memory.models import (
     table_schema_metadata,
 )
 
+
 class MemoryManager:
     def __init__(self, internal_db_url: str) -> None:
         """
-        Initialize database connections.
+        Docstring for __init__
 
-        This constructor prepares database engines for internal system storage
-        based on the provided connection URLs.
+        :param self: Description
+        :param internal_db_url: Description
+        :type internal_db_url: str
         """
         self.internal: Engine = create_engine(internal_db_url)
 
     def init_internal_database(self) -> None:
         """
-        Initialize internal database schema.
+        Docstring for init_internal_database
 
-        This method ensures that required internal tables are available
-        for system operation.
+        :param self: Description
         """
         table_schema_metadata.create_all(self.internal)
 
-    def index_chat_history(self) -> List[ChatHistory]:
+    def index_chat_history(self) -> list[ChatHistory]:
         """
-        Retrieve all stored chat history entries.
+        Docstring for index_chat_history
 
-        This method returns the full set of recorded conversational history
-        maintained by the system.
+        :param self: Description
+        :return: Description
+        :rtype: list[ChatHistory]
         """
         with self.internal.begin() as connection:
-            result: CursorResult = connection.execute(
+            result: CursorResult[Row[Any]] = connection.execute(
                 select(chat_histories).order_by(
                     chat_histories.c.turn_num,
-                    chat_histories.c.created_at
+                    chat_histories.c.created_at,
                 )
             )
 
@@ -67,42 +59,47 @@ class MemoryManager:
 
     def store_chat_history(self, params: ChatHistory) -> None:
         """
-        Persist a chat history entry.
+        Docstring for store_chat_history
 
-        This method records a conversational interaction into internal storage.
+        :param self: Description
+        :param params: Description
+        :type params: ChatHistory
         """
         with self.internal.begin() as connection:
             connection.execute(chat_histories.insert().values(**params.model_dump()))
 
-    def show_chat_history(self, params: ChatHistoryShow) -> List[ChatHistory]:
+    def show_chat_history(self, params: ChatHistoryShow) -> list[ChatHistory]:
         """
-        Retrieve chat history for a specific interaction context.
+        Docstring for show_chat_history
 
-        This method returns chat history entries associated with a given scope.
+        :param self: Description
+        :param params: Description
+        :type params: ChatHistoryShow
+        :return: Description
+        :rtype: list[ChatHistory]
         """
         with self.internal.begin() as connection:
-            result: CursorResult = connection.execute(
-                select(chat_histories).where(
-                    chat_histories.c.turn_num == params.turn_num
-                ).order_by(
-                    chat_histories.c.created_at
-                )
+            result: CursorResult[Row[Any]] = connection.execute(
+                select(chat_histories)
+                .where(chat_histories.c.turn_num == params.turn_num)
+                .order_by(chat_histories.c.created_at)
             )
 
             return [ChatHistory.model_validate(row) for row in result.mappings()]
 
-    def index_short_memory(self) -> List[ShortMemory]:
+    def index_short_memory(self) -> list[ShortMemory]:
         """
-        Retrieve all short-term memory entries.
+        Docstring for index_short_memory
 
-        This method returns the collection of short-term memory records
-        maintained by the system.
+        :param self: Description
+        :return: Description
+        :rtype: list[ShortMemory]
         """
         with self.internal.begin() as connection:
-            result: CursorResult = connection.execute(
+            result: CursorResult[Row[Any]] = connection.execute(
                 select(short_memories).order_by(
                     short_memories.c.turn_num,
-                    short_memories.c.created_at
+                    short_memories.c.created_at,
                 )
             )
 
@@ -110,29 +107,32 @@ class MemoryManager:
 
     def store_short_memory(self, params: ShortMemory) -> None:
         """
-        Persist a short-term memory entry.
+        Docstring for store_short_memory
 
-        This method records temporary system memory into internal storage.
+        :param self: Description
+        :param params: Description
+        :type params: ShortMemory
         """
         with self.internal.begin() as connection:
             connection.execute(short_memories.insert().values(**params.model_dump()))
 
-    def show_short_memory(self, params: ShortMemoryShow) -> Optional[ShortMemory]:
+    def show_short_memory(self, params: ShortMemoryShow) -> ShortMemory | None:
         """
-        Retrieve short-term memory for a specific context.
+        Docstring for show_short_memory
 
-        This method returns the most relevant short-term memory entry
-        for the given scope, if available.
+        :param self: Description
+        :param params: Description
+        :type params: ShortMemoryShow
+        :return: Description
+        :rtype: ShortMemory | None
         """
         with self.internal.begin() as connection:
-            result: CursorResult = connection.execute(
-                select(short_memories).where(
-                    short_memories.c.turn_num == params.turn_num
-                ).order_by(
-                    short_memories.c.created_at
-                )
+            result: CursorResult[Row[Any]] = connection.execute(
+                select(short_memories)
+                .where(short_memories.c.turn_num == params.turn_num)
+                .order_by(short_memories.c.created_at)
             )
 
-            mappings: List[ShortMemory] = [ShortMemory.model_validate(row) for row in result.mappings()]
+            mappings: list[ShortMemory] = [ShortMemory.model_validate(row) for row in result.mappings()]
 
             return mappings.pop() if mappings else None

@@ -17,6 +17,7 @@ wheels/
 
 # Environment and secrets
 .env
+.env.example
 
 # Editor / OS noise
 .vscode/
@@ -36,4 +37,18 @@ docker-compose.yml
 Dockerfile
 
 # Notebooks
-.notebooks
+.notebooks/
+
+# development artifacts
+.ruff_cache/
+.vscode/
+
+# markdown rendering assets
+Binary-Responsibility Agent Graph.png
+graph.png
+
+# markdown files
+*.md
+
+# pyenv files
+.python-version

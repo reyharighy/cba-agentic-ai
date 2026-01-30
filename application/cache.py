@@ -36,7 +36,7 @@ from util import st_cache
 @st_cache("Setting up application data and resources", "data")
 def cold_start() -> None:
     """
-    Docstring for cold_start
+    Cold start function to initialize application data and resources.
     """
     load_memory_manager()
     load_context_manager()
@@ -50,10 +50,7 @@ def cold_start() -> None:
 @st_cache("Loading database manager", "resource")
 def load_memory_manager() -> MemoryManager:
     """
-    Docstring for load_memory_manager
-
-    :return: Description
-    :rtype: MemoryManager
+    Loads the MemoryManager instance.
     """
     return MemoryManager(internal_db_url)
 
@@ -61,10 +58,7 @@ def load_memory_manager() -> MemoryManager:
 @st_cache("Loading context manager", "resource")
 def load_context_manager() -> ContextManager:
     """
-    Docstring for load_context_manager
-
-    :return: Description
-    :rtype: ContextManager
+    Loads the ContextManager instance.
     """
     return ContextManager(external_db_url)
 
@@ -72,10 +66,7 @@ def load_context_manager() -> ContextManager:
 @st_cache("Loading language models", "resource")
 def load_language_model() -> BaseChatModel:
     """
-    Docstring for load_language_model
-
-    :return: Description
-    :rtype: BaseChatModel
+    Loads the language model instance.
     """
     return groq_gpt_120b_high
 
@@ -83,10 +74,7 @@ def load_language_model() -> BaseChatModel:
 @st_cache("Loading graph", "resource")
 def load_graph() -> CompiledStateGraph[State, Context]:
     """
-    Docstring for load_graph
-
-    :return: Description
-    :rtype: CompiledStateGraph[State, Context, State, State]
+    Loads and builds the state graph.
     """
     context_manager: ContextManager = load_context_manager()
     memory_manager: MemoryManager = load_memory_manager()
@@ -104,10 +92,7 @@ def load_graph() -> CompiledStateGraph[State, Context]:
 @st_cache("Loading prompts set", "data")
 def load_prompts_set() -> dict[str, str]:
     """
-    Docstring for load_prompts_set
-
-    :return: Description
-    :rtype: dict[str, str]
+    Loads the set of system prompts.
     """
     return prompt_dict
 
@@ -115,10 +100,7 @@ def load_prompts_set() -> dict[str, str]:
 @st_cache("Loading analytical sandbox bootstrap", "data")
 def load_analytical_sandbox_bootstrap() -> dict[Literal["descriptive", "diagnostic", "predictive", "inferential"], str]:
     """
-    Docstring for load_analytical_sandbox_bootstrap
-
-    :return: Description
-    :rtype: dict[Literal['descriptive', 'diagnostic', 'predictive', 'inferential'], str]
+    Loads the analytical sandbox bootstrap code snippets.
     """
     ignore_warnings: str = "import warnings\n"
     ignore_warnings += "warnings.filterwarnings('ignore')\n"
@@ -150,10 +132,7 @@ def load_analytical_sandbox_bootstrap() -> dict[Literal["descriptive", "diagnost
 @st_cache("Loading infographic sandbox bootstrap", "data")
 def load_infographic_sandbox_bootstrap() -> str:
     """
-    Docstring for load_infographic_sandbox_bootstrap
-
-    :return: Description
-    :rtype: str
+    Loads the infographic sandbox bootstrap code snippet.
     """
     warnings: str = "import warnings\n"
     pandas: str = "import pandas as pd\n"
@@ -175,12 +154,7 @@ def load_infographic_sandbox_bootstrap() -> str:
 @st_cache("Loading infographic object", "resource")
 def load_infographic(infographic_object_file_path: Path) -> tuple[Loader | None, ModuleType | None]:
     """
-    Docstring for load_infographic
-
-    :param infographic_object_file_path: Description
-    :type infographic_object_file_path: Path
-    :return: Description
-    :rtype: tuple[Loader | None, ModuleType | None]
+    Loads an infographic object from the specified file path.
     """
     spec = spec_from_file_location(
         name=infographic_object_file_path.stem,
