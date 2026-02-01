@@ -275,7 +275,7 @@ BEHAVIOURAL GUIDELINES
 You MUST:
 - Base your judgment strictly on provided execution outputs and context
 - Evaluate alignment between:
-    - User request
+    - Distilled contextual representation of the user's request
     - Analytical plan
     - Execution results
 - Treat analytical sufficiency as a technical completeness check, not an interpretive judgment

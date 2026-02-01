@@ -842,7 +842,11 @@ class Graph:
         Node to handle summarization.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        context_prompt: str = self.composer.get_infographic_plan(state)
+        context_prompt: str = ""
+
+        if state["infographic_requirement"] and state["infographic_requirement"].infographic_is_required:
+            context_prompt += self.composer.get_infographic_plan(state)
+
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
         llm, llm_input = self.composer.prepare_invocation(
@@ -880,6 +884,8 @@ class Graph:
         )
 
         self.memory_manager.store_short_memory(create_short_memory_params())
+
+        dataset_file_path.unlink()
 
         return {"summarization": llm_output}
 

@@ -28,6 +28,7 @@ from langchain_core.messages import (
     AnyMessage,
 )
 from langchain_core.runnables import Runnable
+from langchain_core.exceptions import OutputParserException
 from langgraph.runtime import Runtime
 from pandas.api.types import (
     is_datetime64_any_dtype,
@@ -99,17 +100,18 @@ class Composer:
                 ),
             )
 
-            llm = llm.with_retry(retry_if_exception_type=(BadRequestError,), stop_after_attempt=3)
+            llm = llm.with_retry(
+                retry_if_exception_type=(
+                    BadRequestError,
+                    OutputParserException,
+                ),
+                stop_after_attempt=3,
+            )
         else:
             llm = language_model
 
         if state["context_distillation"] and not include_conversation:
-            content: str = "Distilled contextual information: "
-            content += cast(str, state["context_distillation"].content)
-
-            content += "\n\nOriginal user's request: "
-            content += cast(str, state["messages"][-1].content)
-
+            content: str = cast(str, state["context_distillation"].content)
             human_message: HumanMessage = HumanMessage(content)
             llm_input: list[AnyMessage] = [system_message, human_message]
         else:
@@ -119,7 +121,7 @@ class Composer:
                 include_conversation=include_conversation,
             )
 
-        if state["analytical_result"]:
+        if state["analytical_result"] and state["next_node"] != "summarization":
             llm_input.extend([state["analytical_result"]])
 
         return (llm, llm_input)
@@ -135,8 +137,7 @@ class Composer:
         if include_conversation:
             llm_input.extend(self.__get_relevant_conversation(state))
 
-        if state["next_node"] != "summarization":
-            llm_input.extend(state["messages"])
+        llm_input.extend(state["messages"])
 
         return llm_input
 
@@ -442,12 +443,14 @@ class Composer:
         Retrieve the infographic plan with rationale.
         """
         if state["infographic_plan"]:
-            context_prompt: str = "\n\nInfographic plan that was generated previously: "
+            context_prompt: str = "\n\nInfographic plan that was generated to answer current request: "
             context_prompt += str(state["infographic_plan"])
 
             return context_prompt
 
-        raise ValueError(f"'infographic_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+        raise ValueError(
+            f"'infographic_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node if infographic is required"
+        )
 
     def get_infographic_plan_execution_feedback(self, state: State) -> str:
         """

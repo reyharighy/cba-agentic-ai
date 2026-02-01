@@ -22,7 +22,7 @@ Your task is to:
 
 BEHAVIORAL GUIDELINES
 You MUST:
-- Produce the distilled context in clear, neutral English
+- Produce clear and neutral distilled context in a language used by the user
 - Treat the latest user turn as the primary signal
 - Use prior conversation turns only to recover missing or implicit context
 - Preserve:

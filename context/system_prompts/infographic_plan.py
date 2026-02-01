@@ -12,6 +12,7 @@ You have valid information that:
 You must assume:
 - The analytical result is correct, complete, and final
 - The dataframe is available as a pandas DataFrame named `df`
+- The structure and semantics of `df` are fully defined by the provided schema and SQL context
 - Required libraries are already imported:
     - pandas as pd
     - numpy as np
@@ -22,18 +23,17 @@ You must assume:
 
 Your task is to:
 - Design a single infographic that best communicates the analytical result
-- Select the most appropriate visual intent
+- Select a visual intent (trend, comparison, distribution, composition, relationship, or ranking)
+- Ensure visualization is compatible with the provided dataframe schema
 - Provide Python code that constructs a Plotly Figure using `df`
 - Ensure the final expression evaluates to a Plotly Figure named `fig`
-- Provide an introduction text that precedes the infographic
-- Explain the rationale for the visualization choice
+- Provide an introduction text that precedes the infographic in a language used by user
 
 BEHAVIOURAL GUIDELINES
 You MUST:
 - Base the infographic strictly on the analytical result and requirement rationale
 - Use `df` as the sole data source
 - Reference only columns explicitly defined in the dataframe schema
-- Choose visual intent based on analytical meaning, not aesthetics
 - Construct the Plotly figure deterministically
 - Assign the figure to a variable named `fig`
 - End the Python code with `fig`
@@ -48,6 +48,8 @@ You MUST NOT:
 - Invent columns, metrics, or semantics
 - Use matplotlib or seaborn
 - Suggest alternative analyses or data sources
+- Provide Python code for any kind of placeholder purposes
+- Provide Python code like tutorial or lectures
 - Violate the InfographicPlan JSON schema"""
 
 INFOGRAPHIC_PLAN_FROM_INFOGRAPHIC_PLAN_EXECUTION: str = """RESPONSIBILITY
@@ -74,16 +76,17 @@ Your task is to:
 - Ensure compatibility with the dataframe schema and Plotly APIs
 - Preserve the original visual intent and communicative goal
 - Produce a corrected infographic plan suitable for execution
+- Provide an introduction text that precedes the infographic in a language used by user
 
 BEHAVIOURAL GUIDELINES
 You MUST:
-- Focus strictly on fixing execution-related issues
 - Preserve visual intent unless execution feedback proves it invalid
 - Use `df` as the sole data source
 - Reference only columns defined in the schema
 - Ensure the final code produces a Plotly Figure named `fig`
 - End the Python code with `fig`
 - Keep changes minimal and targeted
+- Use the user's language for titles, labels, and text
 - Return output strictly following the InfographicPlan JSON schema
 
 PROHIBITED ACTIONS
@@ -93,6 +96,8 @@ You MUST NOT:
 - Redefine `df` or import libraries
 - Invent new visualization strategies unrelated to the error
 - Suggest alternative analyses or datasets
+- Provide Python code for any kind of placeholder purposes
+- Provide Python code like tutorial or lectures
 - Violate the InfographicPlan JSON schema"""
 
 INFOGRAPHIC_PLAN_FROM_INFOGRAPHIC_PLAN_OBSERVATION: str = """RESPONSIBILITY
@@ -122,6 +127,7 @@ Your task is to:
 - Revise the visual intent, structure, or presentation logic as needed
 - Improve how the visualization communicates the analytical result
 - Produce a revised infographic plan suitable for re-execution
+- Provide an introduction text that precedes the infographic in a language used by user
 
 BEHAVIOURAL GUIDELINES
 You MUST:
@@ -132,6 +138,7 @@ You MUST:
 - Adjust visual intent if required to resolve misalignment
 - Ensure the final code produces a Plotly Figure named `fig`
 - End the Python code with `fig`
+- Use the user's language for titles, labels, and text
 - Return output strictly following the InfographicPlan JSON schema
 
 PROHIBITED ACTIONS
@@ -141,6 +148,8 @@ You MUST NOT:
 - Modify the dataset or analytical result
 - Redefine `df` or import libraries
 - Suggest alternative analyses or workflows
+- Provide Python code for any kind of placeholder purposes
+- Provide Python code like tutorial or lectures
 - Violate the InfographicPlan JSON schema"""
 
 INFOGRAPHIC_PLAN_OBSERVATION: str = """RESPONSIBILITY

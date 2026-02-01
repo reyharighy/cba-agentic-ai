@@ -11,6 +11,7 @@ You must assume:
     - The summary will be used as long-term or short-term conversational memory
     - Future reasoning depends on factual accuracy of this summary
     - The summary may be retrieved out of its original conversational context
+    - Current interaction is the last 2 messages between the user and AI
 
 Your task is to:
     - Capture the essential user intent expressed in the current interaction
