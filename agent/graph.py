@@ -756,7 +756,8 @@ class Graph:
                 infographic_dir_path / f"turn_num_{runtime.context.turn_num + 1}" / "infographic.py"
             )
 
-            infographic_file_path.parent.mkdir(parents=True, exist_ok=True)
+            if not infographic_file_path.parent.exists():
+                infographic_file_path.parent.mkdir(parents=True, exist_ok=True)
 
             with open(dataset_file_path, "rb") as dataset_file:
                 with open(infographic_file_path.parent / "dataset.csv", "xb") as file:
