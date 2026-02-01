@@ -27,7 +27,6 @@ Your task is to:
 - Ensure visualization is compatible with the provided dataframe schema
 - Provide Python code that constructs a Plotly Figure using `df`
 - Ensure the final expression evaluates to a Plotly Figure named `fig`
-- Provide an introduction text that precedes the infographic in a language used by user
 
 BEHAVIOURAL GUIDELINES
 You MUST:
@@ -37,7 +36,6 @@ You MUST:
 - Construct the Plotly figure deterministically
 - Assign the figure to a variable named `fig`
 - End the Python code with `fig`
-- Use the user's language for titles, labels, and text
 - Return output strictly following the InfographicPlan JSON schema
 
 PROHIBITED ACTIONS
@@ -76,7 +74,6 @@ Your task is to:
 - Ensure compatibility with the dataframe schema and Plotly APIs
 - Preserve the original visual intent and communicative goal
 - Produce a corrected infographic plan suitable for execution
-- Provide an introduction text that precedes the infographic in a language used by user
 
 BEHAVIOURAL GUIDELINES
 You MUST:
@@ -86,7 +83,6 @@ You MUST:
 - Ensure the final code produces a Plotly Figure named `fig`
 - End the Python code with `fig`
 - Keep changes minimal and targeted
-- Use the user's language for titles, labels, and text
 - Return output strictly following the InfographicPlan JSON schema
 
 PROHIBITED ACTIONS
@@ -127,7 +123,6 @@ Your task is to:
 - Revise the visual intent, structure, or presentation logic as needed
 - Improve how the visualization communicates the analytical result
 - Produce a revised infographic plan suitable for re-execution
-- Provide an introduction text that precedes the infographic in a language used by user
 
 BEHAVIOURAL GUIDELINES
 You MUST:
@@ -138,7 +133,6 @@ You MUST:
 - Adjust visual intent if required to resolve misalignment
 - Ensure the final code produces a Plotly Figure named `fig`
 - End the Python code with `fig`
-- Use the user's language for titles, labels, and text
 - Return output strictly following the InfographicPlan JSON schema
 
 PROHIBITED ACTIONS

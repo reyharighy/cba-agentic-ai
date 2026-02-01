@@ -99,7 +99,7 @@ class Graph:
         serialized_output: IntentComprehension = IntentComprehension.model_validate(llm_output)
 
         return {
-            "ui_payload": "",
+            "ui_payload": "Identifying request category...",
             "next_node": "request_classification",
             "intent_comprehension": serialized_output,
         }
@@ -133,7 +133,7 @@ class Graph:
             return Command(
                 goto="context_distillation",
                 update={
-                    "ui_payload": "",
+                    "ui_payload": "Refining request...",
                     "next_node": "context_distillation",
                     "request_classification": serialized_output,
                 },
@@ -142,7 +142,7 @@ class Graph:
         return Command(
             goto="punt_response",
             update={
-                "ui_payload": "",
+                "ui_payload": "Wrapping up...",
                 "next_node": "punt_response",
                 "request_classification": serialized_output,
             },
@@ -165,7 +165,7 @@ class Graph:
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
-            "ui_payload": "",
+            "ui_payload": "Ready to go!",
             "next_node": None,
             "messages": [llm_output],
         }
@@ -187,7 +187,7 @@ class Graph:
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
-            "ui_payload": "",
+            "ui_payload": "Surveying database landscape...",
             "next_node": "data_availability",
             "context_distillation": llm_output,
         }
@@ -226,7 +226,7 @@ class Graph:
         return Command(
             goto="direct_response",
             update={
-                "ui_payload": "",
+                "ui_payload": "Wrapping up...",
                 "next_node": "direct_response",
                 "analytical_requirement": serialized_output,
             },
@@ -249,7 +249,7 @@ class Graph:
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
-            "ui_payload": "",
+            "ui_payload": "Ready to go!",
             "next_node": "summarization",
             "messages": [llm_output],
         }
@@ -283,7 +283,7 @@ class Graph:
             return Command(
                 goto="data_retrieval_plan",
                 update={
-                    "ui_payload": "",
+                    "ui_payload": "Structuring data fetch...",
                     "next_node": "data_retrieval_plan",
                     "data_availability": serialized_output,
                 },
@@ -292,7 +292,7 @@ class Graph:
         return Command(
             goto="data_unavailability_response",
             update={
-                "ui_payload": "",
+                "ui_payload": "Wrapping up...",
                 "next_node": "data_unavailability_response",
                 "data_availability": serialized_output,
             },
@@ -316,7 +316,7 @@ class Graph:
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
-            "ui_payload": "",
+            "ui_payload": "Ready to go!",
             "next_node": "summarization",
             "messages": [llm_output],
         }
@@ -359,7 +359,7 @@ class Graph:
         serialized_output: DataRetrievalPlan = DataRetrievalPlan.model_validate(llm_output)
 
         return {
-            "ui_payload": "",
+            "ui_payload": "Implementing retrieval plan...",
             "next_node": "data_retrieval_plan_execution",
             "data_retrieval_plan": serialized_output,
             "data_retrieval_plan_execution": None,
@@ -386,7 +386,7 @@ class Graph:
                     return Command(
                         goto="data_retrieval_plan",
                         update={
-                            "ui_payload": "",
+                            "ui_payload": "Refining retrieval strategy...",
                             "next_node": "data_retrieval_plan",
                             "data_retrieval_plan_execution": error,
                         },
@@ -396,7 +396,7 @@ class Graph:
                     return Command(
                         goto="data_retrieval_plan",
                         update={
-                            "ui_payload": "",
+                            "ui_payload": "Refining retrieval strategy...",
                             "next_node": "data_retrieval_plan",
                             "data_retrieval_plan_execution": error,
                         },
@@ -405,7 +405,7 @@ class Graph:
                 return Command(
                     goto="data_retrieval_plan_observation",
                     update={
-                        "ui_payload": "",
+                        "ui_payload": "Auditing data integrity...",
                         "next_node": "data_retrieval_plan_observation",
                     },
                 )
@@ -447,7 +447,7 @@ class Graph:
             return Command(
                 goto="analytical_plan",
                 update={
-                    "ui_payload": "",
+                    "ui_payload": "Formulating analytical steps...",
                     "next_node": "analytical_plan",
                     "data_retrieval_plan_observation": serialized_output,
                 },
@@ -456,7 +456,7 @@ class Graph:
         return Command(
             goto="data_retrieval_plan",
             update={
-                "ui_payload": "",
+                "ui_payload": "Refining retrieval strategy...",
                 "next_node": "data_retrieval_plan",
                 "data_retrieval_plan_observation": serialized_output,
             },
@@ -504,7 +504,7 @@ class Graph:
             analytical_step.python_code = analytical_step.python_code.replace("\\n", "\n")
 
         return {
-            "ui_payload": "",
+            "ui_payload": "Running analysis sequence...",
             "next_node": "analytical_plan_execution",
             "analytical_plan": serialized_output,
             "analytical_plan_execution": None,
@@ -533,7 +533,7 @@ class Graph:
             return Command(
                 goto="analytical_plan",
                 update={
-                    "ui_payload": "",
+                    "ui_payload": "Recalibrating analytical logic...",
                     "next_node": "analytical_plan",
                     "analytical_plan_execution": execution,
                 },
@@ -542,7 +542,7 @@ class Graph:
         return Command(
             goto="analytical_plan_observation",
             update={
-                "ui_payload": "",
+                "ui_payload": "Auditing insights...",
                 "next_node": "analytical_plan_observation",
                 "analytical_plan_execution": execution,
             },
@@ -583,7 +583,7 @@ class Graph:
             return Command(
                 goto="analytical_result",
                 update={
-                    "ui_payload": "",
+                    "ui_payload": "Structuring insight...",
                     "next_node": "analytical_result",
                     "analytical_plan_observation": serialized_output,
                 },
@@ -592,7 +592,7 @@ class Graph:
         return Command(
             goto="analytical_plan",
             update={
-                "ui_payload": "",
+                "ui_payload": "Enhancing analytical precision...",
                 "next_node": "analytical_plan",
                 "analytical_plan_execution": None,
                 "analytical_plan_observation": serialized_output,
@@ -619,7 +619,7 @@ class Graph:
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
-            "ui_payload": "",
+            "ui_payload": "Identifying visual opportunities...",
             "next_node": "infographic_requirement",
             "analytical_result": llm_output,
         }
@@ -652,7 +652,7 @@ class Graph:
             return Command(
                 goto="infographic_plan",
                 update={
-                    "ui_payload": "",
+                    "ui_payload": "Architecting chart schema...",
                     "next_node": "infographic_plan",
                     "infographic_requirement": serialized_output,
                 },
@@ -661,7 +661,7 @@ class Graph:
         return Command(
             goto="analytical_response",
             update={
-                "ui_payload": "",
+                "ui_payload": "Wrapping up...",
                 "next_node": "analytical_response",
                 "infographic_requirement": serialized_output,
             },
@@ -671,11 +671,8 @@ class Graph:
         """
         Node to handle analytical response.
         """
-        if state["infographic_plan"] and state["analytical_result"]:
-            state["analytical_result"].content += f"\n\n{state['infographic_plan'].introduction_text}\n"
-
         return {
-            "ui_payload": "",
+            "ui_payload": "Ready to go!",
             "next_node": "summarization",
             "messages": [state["analytical_result"]],
         }
@@ -721,7 +718,7 @@ class Graph:
         serialized_output.python_code = serialized_output.python_code.replace("\\n", "\n")
 
         return {
-            "ui_payload": "",
+            "ui_payload": "Painting insight canvas...",
             "next_node": "infographic_plan_execution",
             "infographic_plan": serialized_output,
             "infographic_plan_execution": None,
@@ -748,7 +745,7 @@ class Graph:
             return Command(
                 goto="infographic_plan",
                 update={
-                    "ui_payload": "",
+                    "ui_payload": "Recalibrating visual map...",
                     "next_node": "infographic_plan",
                     "infographic_plan_execution": execution,
                 },
@@ -784,7 +781,7 @@ class Graph:
         return Command(
             goto="infographic_plan_observation",
             update={
-                "ui_payload": "",
+                "ui_payload": "Evaluating graphic fidelity...",
                 "next_node": "infographic_plan_observation",
             },
         )
@@ -822,7 +819,7 @@ class Graph:
             return Command(
                 goto="analytical_response",
                 update={
-                    "ui_payload": "",
+                    "ui_payload": "Wrapping up...",
                     "next_node": "analytical_response",
                     "infographic_plan_observation": serialized_output,
                 },
@@ -831,7 +828,7 @@ class Graph:
         return Command(
             goto="infographic_plan",
             update={
-                "ui_payload": "",
+                "ui_payload": "Refining the visual blueprint...",
                 "next_node": "infographic_plan",
                 "infographic_plan_observation": serialized_output,
             },

@@ -5,13 +5,10 @@
 from collections.abc import Generator
 from pathlib import Path
 from time import sleep
-from typing import Any
 
 # third-party
 import streamlit as st
-from streamlit.delta_generator import (
-    DeltaGenerator,
-)
+from streamlit.delta_generator import DeltaGenerator
 from langchain_core.messages import HumanMessage
 from langgraph.graph.state import (
     CompiledStateGraph,
@@ -26,10 +23,6 @@ from .cache import (
     load_infographic,
 )
 from .runtime import SessionMemory
-from .stages import (
-    enable_interactive_graph,
-    images_source_path,
-)
 from agent import (
     Context,
     State,
@@ -197,17 +190,8 @@ class UserInterface:
             infographic_sandbox_bootstrap=load_infographic_sandbox_bootstrap(),
         )
 
-        status_box: DeltaGenerator = st.status(label="Understanding request intent", expanded=True)
-
-        column_containers: list[DeltaGenerator] = []
-        graph_placeholder: DeltaGenerator | None = None
-
-        if enable_interactive_graph:
-            column_containers = status_box.columns([0.4, 0.6], border=True)
-            column_containers[0].subheader("Graph Execution Runtime Visualization")
-            column_containers[1].subheader("Thinking Output")
-            graph_placeholder = column_containers[0].empty()
-            self.__render_graph_element(graph_placeholder, None)
+        status_box: DeltaGenerator = st.status("Analyzing your intent", expanded=True)
+        stream_placeholder: DeltaGenerator = status_box.empty()
 
         try:
             for chunk in graph.stream(
@@ -216,23 +200,37 @@ class UserInterface:
                 stream_mode="updates",
                 config={"recursion_limit": 100},
             ):
-                st.write(chunk)
-                st.write(self.__stream_generator)
+                node_name, node_state = next(iter((chunk.items())))
+
+                if ui_payload := node_state.get("ui_payload"):
+                    status_box.update(label=ui_payload)
+
+                if node_name == "summarization":
+                    st.session_state["success_toast"] = True
+                    continue
+
+                if node_name.endswith("_response"):
+                    self.session_memory.chat_output = node_state["messages"][-1].content
+
+                    if node_name.startswith("punt"):
+                        st.session_state["punt_response"].append(self.session_memory.chat_input)
+                        st.session_state["punt_response"].append(self.session_memory.chat_output)
+                        st.session_state["punt_toast"] = True
+
+                    stream_placeholder.write(self.__stream_generator)
+                    continue
+
+                if node_name.endswith("_result") or node_name.endswith("_execution") or node_name.startswith("context"):
+                    continue
+
+                if rationale := node_state[node_name].rationale:
+                    self.session_memory.thinking = rationale
+                    stream_placeholder.write(self.__stream_generator)
 
         except Exception as e:
             st.session_state["error_toast"] = True
             st.error(f"Graph execution failed: {e}")
-
-    def __render_graph_element(self, graph_placeholder: DeltaGenerator, node_state: dict[str, Any] | None) -> None:
-        """
-        Renders the graph element in the user interface.
-        """
-        graph_placeholder.image(
-            image=f"{images_source_path}/{node_state['next_node']}.png"
-            if node_state
-            else f"{images_source_path}/intent_comprehension.png",
-            width="stretch",
-        )
+            sleep(1000)
 
     def __stream_generator(self) -> Generator[str, None, None]:
         """
@@ -271,6 +269,9 @@ class UserInterface:
                 body="###### **Your request is out of business analytics domain. This chat turn will not be persisted.**",
                 duration="long",
             )
+
+            sleep(10)
+            st.rerun()
 
         if st.session_state["error_toast"]:
             st.session_state["error_toast"] = False

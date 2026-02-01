@@ -216,10 +216,6 @@ class InfographicPlan(BaseModel):
         ...,
         description="The primary visual intent of the infographic to communicate the analytical results",
     )
-    introduction_text: str = Field(
-        ...,
-        description="Text introducing the infographic and its purpose, put after the analytical result and before the infographic itself",
-    )
     python_code: str = Field(
         ...,
         description="Python code to generate the infographic using appropriate visualization libraries",
