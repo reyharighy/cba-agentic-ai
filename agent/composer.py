@@ -6,9 +6,9 @@
 import sys
 from typing import (
     Any,
-    Literal,
     cast,
 )
+from uuid import UUID
 
 # third-party
 import pandas as pd
@@ -70,14 +70,14 @@ class Composer:
         short_memories: list[ShortMemory] = self.memory_manager.index_short_memory()
 
         if short_memories:
-            context_prompt: str = "\n\nConversation history summarized by turn number:"
+            context_prompt: str = "\n\nConversation history summary:\n"
 
             for short_memory in short_memories:
                 context_prompt += f"\n[TURN-{short_memory.turn_num}]: {short_memory.summary}"
 
             return context_prompt
 
-        return "\n\nThere is no conversation history."
+        return "\n\nNo conversation history available."
 
     def prepare_invocation(
         self,
@@ -99,16 +99,19 @@ class Composer:
                 ),
             )
 
-            llm.with_retry(
-                retry_if_exception_type=(BadRequestError,),
-                stop_after_attempt=3
-            )
+            llm = llm.with_retry(retry_if_exception_type=(BadRequestError,), stop_after_attempt=3)
         else:
             llm = language_model
 
         if state["context_distillation"] and not include_conversation:
-            contextual_goal: HumanMessage = HumanMessage(cast(str, state["context_distillation"].content))
-            llm_input: list[AnyMessage] = [system_message, contextual_goal]
+            content: str = "Distilled contextual information: "
+            content += cast(str, state["context_distillation"].content)
+
+            content += "\n\nOriginal user's request: "
+            content += cast(str, state["messages"][-1].content)
+
+            human_message: HumanMessage = HumanMessage(content)
+            llm_input: list[AnyMessage] = [system_message, human_message]
         else:
             llm_input: list[AnyMessage] = self.__prepare_language_model_message_input(
                 system_message=system_message,
@@ -132,7 +135,8 @@ class Composer:
         if include_conversation:
             llm_input.extend(self.__get_relevant_conversation(state))
 
-        llm_input.extend(state["messages"])
+        if state["next_node"] != "summarization":
+            llm_input.extend(state["messages"])
 
         return llm_input
 
@@ -160,9 +164,7 @@ class Composer:
         Retrieve feedback for punt response based on request classification.
         """
         if state["request_classification"]:
-            context_prompt: str = (
-                "\n\nThe feedback why the user's request is not related to business analytics domain:\n"
-            )
+            context_prompt: str = "\n\nFeedback why the user's request cannot be handled with the external database: "
             context_prompt += state["request_classification"].rationale
 
             return context_prompt
@@ -175,8 +177,30 @@ class Composer:
         """
         Retrieve the external database schema information.
         """
-        context_prompt: str = "\n\nThe external database schema and sample values in each columns::\n"
-        context_prompt += repr(self.context_manager.inspect_external_database())
+        context_prompt: str = "\n\nExternal database schema with tables and their respective column specifications:"
+        schema: dict[str, list[dict[str, Any]]] = self.context_manager.inspect_external_database()
+
+        for table_name, column_item in schema.items():
+            context_prompt += f"\n- Table '{table_name}' has following column specifications:"
+
+            for column in column_item:
+                context_prompt += f"\n\t- Column '{column['name']}' of type '{column['type']}'. "
+                context_prompt += f"It describes about '{column['comment']}'. " if column.get("comment", None) else ""
+                context_prompt += (
+                    f"It has sample value(s) such as `{column['sample_values']}`. "
+                    if column.get("sample_values", None)
+                    else ""
+                )
+                context_prompt += (
+                    f"It has the earliest timestamp value as `{column['earliest_timestamp']}`. "
+                    if column.get("earliest_timestamp", None)
+                    else ""
+                )
+                context_prompt += (
+                    f"It has the latest timestamp value as `{column['latest_timestamp']}`. "
+                    if column.get("latest_timestamp", None)
+                    else ""
+                )
 
         return context_prompt
 
@@ -185,9 +209,7 @@ class Composer:
         Retrieve feedback for data unavailability response based on data availability.
         """
         if state["data_availability"]:
-            context_prompt: str = (
-                "\n\nThe feedback why the external database is unsupported to answer the user's request:\n"
-            )
+            context_prompt: str = "\n\nFeedback why the required data is unavailable in the external database: "
             context_prompt += state["data_availability"].rationale
 
             return context_prompt
@@ -199,11 +221,10 @@ class Composer:
         Retrieve the data retrieval plan including SQL query and rationale.
         """
         if state["data_retrieval_plan"]:
-            context_prompt: str = "\n\nThe last SQL query used to extract data from external database into dataframe:\n"
+            context_prompt: str = "\n\nSQL query generated to extract data from external database: "
             context_prompt += str(state["data_retrieval_plan"].sql_query)
-            context_prompt += (
-                "\n\nThe reason why the generated SQL query is used to extract data from external database:\n"
-            )
+
+            context_prompt += "\n\nRationale for the data retrieval plan: "
             context_prompt += f"{state['data_retrieval_plan'].rationale}"
             return context_prompt
 
@@ -211,13 +232,13 @@ class Composer:
 
     def get_dataframe_schema_info(self) -> str:
         """
-        Retrieve the dataframe schema information from the dataset CSV file.
+        Retrieve the dataframe schema from the dataset CSV file.
         """
         if not dataset_file_path.exists():
             dataset_file_path.touch()
 
         try:
-            context_prompt: str = "\n\nDataframe schema and sample values in each columns:"
+            context_prompt: str = "\n\nDataframe schema with columns and sample value(s): "
             col_value_dict: dict[str, tuple[str, Any]] = {}
             dset_attrs: str = ""
             df: pd.DataFrame = pd.read_csv(dataset_file_path)
@@ -230,10 +251,17 @@ class Composer:
                         continue
 
             for column in df.columns:
-                if is_numeric_dtype(df[column]) or is_datetime64_any_dtype(df[column]):
-                    col_value_dict[column] = (str(df[column].dtype), df[column].unique()[:1])
-                else:
-                    col_value_dict[column] = (str(df[column].dtype), df[column].unique())
+                try:
+                    # Even if data_retrieval_plan is set to ignore identifiers,
+                    # we must implement a manual override to ensure they are strictly excluded.
+                    UUID(df[column].iloc[0])
+                except Exception as _:
+                    if is_datetime64_any_dtype(df[column]):
+                        col_value_dict[column] = (str(df[column].dtype), df[column].unique()[:1])
+                    elif is_numeric_dtype(df[column]):
+                        col_value_dict[column] = (str(df[column].dtype), df[column].unique()[:2])
+                    else:
+                        col_value_dict[column] = (str(df[column].dtype), df[column].unique())
 
             for col_name, values in col_value_dict.items():
                 dset_attrs += f"\n- {col_name} ({values[0]}): {list(str(value) for value in values[1])}"
@@ -242,16 +270,14 @@ class Composer:
 
             return context_prompt
         except EmptyDataError as _:
-            return "\n\nThere is no dataframe object representation."
+            return "\n\nNo dataframe schema information available."
 
     def get_data_retrieval_plan_execution_feedback(self, state: State) -> str:
         """
         Retrieve feedback for data retrieval plan execution errors.
         """
         if state["data_retrieval_plan_execution"]:
-            context_prompt: str = (
-                "\n\nThe feedback why the data retrieval execution on external database raises an error:\n"
-            )
+            context_prompt: str = "\n\nFeedback on the data retrieval execution from external database: "
             context_prompt += str(state["data_retrieval_plan_execution"])
 
             return context_prompt
@@ -265,9 +291,7 @@ class Composer:
         Retrieve feedback for data retrieval plan observation.
         """
         if state["data_retrieval_plan_observation"]:
-            context_prompt: str = (
-                "\n\nThe feedback why the data retrieval execution result on external database is insufficient:\n"
-            )
+            context_prompt: str = "\n\nFeedback why the data retrieval result is insufficient: "
             context_prompt += state["data_retrieval_plan_observation"].rationale
 
             return context_prompt
@@ -276,9 +300,7 @@ class Composer:
             f"'data_retrieval_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
         )
 
-    def validate_sql_query(
-        self, sql_query: str, schema: dict[Literal["tables", "columns"], list[str] | dict[str, Any]]
-    ) -> ValueError | None:
+    def validate_sql_query(self, sql_query: str, schema: dict[str, list[dict[str, Any]]]) -> ValueError | None:
         """
         Validate the SQL query against the provided database schema.
         """
@@ -291,18 +313,13 @@ class Composer:
             tables: list[str] = [table.name for table in tree.find_all(exp.Table)]
             columns: list[str] = [column.name for column in tree.find_all(exp.Column)]
 
-            if isinstance(schema["columns"], dict):
-                nested_columns = [columns for columns in schema["columns"].values()]
+            for table in tables:
+                if table not in schema.keys():
+                    return ValueError(f"Unknown table: {table}")
 
-                for table in tables:
-                    if table not in schema["tables"]:
-                        return ValueError(f"Unknown table: {table}")
-
-                for column in columns:
-                    if column not in [column["name"] for sublist in nested_columns for column in sublist]:
-                        return ValueError(f"Unknown column: {column}")
-            else:
-                raise TypeError("value in key 'columns' of schema should be a type of dict")
+            for column in columns:
+                if column not in [col["name"] for col_list in schema.values() for col in col_list]:
+                    return ValueError(f"Unknown column: {column}")
         except ParseError as e:
             return ValueError(f"Invalid SQL Syntax: {e}")
 
@@ -337,13 +354,13 @@ class Composer:
         Retrieve the analytical plan with step-by-step rationale.
         """
         if state["analytical_plan"]:
-            context_prompt: str = "\n\nThe step-by-step computational plan:"
+            context_prompt: str = "\n\nAnalytical plan that was generated previously: "
 
             for analytical_step in state["analytical_plan"].plan:
                 context_prompt += (
                     f"\n{analytical_step.number}. {analytical_step.rationale}"
                     if not original
-                    else f"\n- {analytical_step}"
+                    else f"\n- {analytical_step}"  # Still not optimized for original structure
                 )
 
             return context_prompt
@@ -355,7 +372,7 @@ class Composer:
         Retrieve feedback for analytical plan execution errors.
         """
         if state["analytical_plan_execution"] and state["analytical_plan_execution"].error:
-            context_prompt: str = "\n\nThe traceback error logs from the sandbox environment:\n"
+            context_prompt: str = "\n\nTraceback error logs from the sandbox environment: "
             context_prompt += state["analytical_plan_execution"].error.traceback
 
             return context_prompt
@@ -369,7 +386,7 @@ class Composer:
         Retrieve feedback for analytical plan observation.
         """
         if state["analytical_plan_observation"]:
-            context_prompt: str = "\n\nThe feedback why the analytical plan execution result is insufficient:\n"
+            context_prompt: str = "\n\nFeedback why the analytical plan execution result is insufficient: "
             context_prompt += state["analytical_plan_observation"].rationale
 
             return context_prompt
@@ -383,7 +400,7 @@ class Composer:
         Retrieve the analytical plan execution result logs.
         """
         if state["analytical_plan_execution"]:
-            context_prompt: str = "\n\nThe execution logs from the sandbox environment:\n"
+            context_prompt: str = "\n\nExecution output logs of the analytical plan: "
             context_prompt += str(state["analytical_plan_execution"].logs.stdout[0])
 
             return context_prompt
@@ -397,7 +414,7 @@ class Composer:
         Retrieve the analytical plan observation rationale.
         """
         if state["analytical_plan_observation"]:
-            context_prompt: str = "\n\nThe observation result on the execution output of the analytical plan:\n"
+            context_prompt: str = "\n\nObservation on the analytical plan execution result: "
             context_prompt += state["analytical_plan_observation"].rationale
 
             return context_prompt
@@ -411,7 +428,7 @@ class Composer:
         Retrieve the rationale for infographic requirement.
         """
         if state["infographic_requirement"]:
-            context_prompt: str = "\n\nThe reason why the analysis result requires infographic visualization:\n"
+            context_prompt: str = "\n\nRationale for the infographic requirement: "
             context_prompt += state["infographic_requirement"].rationale
 
             return context_prompt
@@ -425,7 +442,7 @@ class Composer:
         Retrieve the infographic plan with rationale.
         """
         if state["infographic_plan"]:
-            context_prompt: str = "\n\nInfographic plan that was generated previously:\n"
+            context_prompt: str = "\n\nInfographic plan that was generated previously: "
             context_prompt += str(state["infographic_plan"])
 
             return context_prompt
@@ -437,7 +454,7 @@ class Composer:
         Retrieve feedback for infographic plan execution errors.
         """
         if state["infographic_plan_execution"] and state["infographic_plan_execution"].error:
-            context_prompt: str = "\n\nThe traceback error logs from the sandbox environment:\n"
+            context_prompt: str = "\n\nTraceback error logs from the sandbox environment: "
             context_prompt += state["infographic_plan_execution"].error.traceback
 
             return context_prompt
@@ -451,7 +468,7 @@ class Composer:
         Retrieve feedback for infographic plan observation.
         """
         if state["infographic_plan_observation"]:
-            context_prompt: str = "\n\nThe feedback why the infographic plan execution result is insufficient:\n"
+            context_prompt: str = "\n\nFeedback why the infographic plan execution result is insufficient: "
             context_prompt += state["infographic_plan_observation"].rationale
 
             return context_prompt
@@ -468,7 +485,7 @@ class Composer:
             code: str = runtime.context.infographic_sandbox_bootstrap
 
             for line in state["infographic_plan"].python_code.replace("\\n", "\n").replace("\\t", "\t").split("\n"):
-                code += "\n" + line + "\n"
+                code += "\n" + line if line != "fig" else "" + "\n"
 
             code += "\n_ = None" if on_sandbox else ""
 

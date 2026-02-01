@@ -102,7 +102,7 @@ class DataRetrievalPlanObservation(BaseModel):
     result_is_sufficient: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the execution result fulfils the data retrieval planning. "
+            "The value must be set to True if the execution result fulfils the data retrieval plan. "
             "Otherwise, set the value to False."
         ),
     )
@@ -215,6 +215,10 @@ class InfographicPlan(BaseModel):
     ] = Field(
         ...,
         description="The primary visual intent of the infographic to communicate the analytical results",
+    )
+    introduction_text: str = Field(
+        ...,
+        description="Text introducing the infographic and its purpose, put after the analytical result and before the infographic itself",
     )
     python_code: str = Field(
         ...,

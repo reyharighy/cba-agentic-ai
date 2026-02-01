@@ -109,7 +109,7 @@ class Graph:
     ) -> Command[
         Literal[
             "punt_response",
-            "analytical_requirement",
+            "context_distillation",
         ]
     ]:
         """
@@ -131,10 +131,10 @@ class Graph:
 
         if serialized_output.request_is_business_analytical_domain:
             return Command(
-                goto="analytical_requirement",
+                goto="context_distillation",
                 update={
                     "ui_payload": "",
-                    "next_node": "analytical_requirement",
+                    "next_node": "context_distillation",
                     "request_classification": serialized_output,
                 },
             )
@@ -170,11 +170,33 @@ class Graph:
             "messages": [llm_output],
         }
 
+    def __context_distillation(self, state: State, runtime: Runtime[Context]) -> dict[str, Any]:
+        """
+        Node to handle context distillation.
+        """
+        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
+        system_message: SystemMessage = SystemMessage(system_prompt)
+
+        llm, llm_input = self.composer.prepare_invocation(
+            system_message=system_message,
+            state=state,
+            language_model=self.language_model,
+            include_conversation=True,
+        )
+
+        llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
+
+        return {
+            "ui_payload": "",
+            "next_node": "data_availability",
+            "context_distillation": llm_output,
+        }
+
     def __analytical_requirement(
         self,
         state: State,
         runtime: Runtime[Context],
-    ) -> Command[Literal["direct_response", "context_distillation"]]:
+    ) -> Command[Literal["direct_response", "data_availability"]]:
         """
         Node to handle analytical requirement.
         """
@@ -186,7 +208,6 @@ class Graph:
             state=state,
             language_model=self.language_model,
             schema=AnalyticalRequirement,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -194,10 +215,10 @@ class Graph:
 
         if serialized_output.analytical_process_is_required:
             return Command(
-                goto="context_distillation",
+                goto="data_availability",
                 update={
                     "ui_payload": "",
-                    "next_node": "context_distillation",
+                    "next_node": "data_availability",
                     "analytical_requirement": serialized_output,
                 },
             )
@@ -231,28 +252,6 @@ class Graph:
             "ui_payload": "",
             "next_node": "summarization",
             "messages": [llm_output],
-        }
-
-    def __context_distillation(self, state: State, runtime: Runtime[Context]) -> dict[str, Any]:
-        """
-        Node to handle context distillation.
-        """
-        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        system_message: SystemMessage = SystemMessage(system_prompt)
-
-        llm, llm_input = self.composer.prepare_invocation(
-            system_message=system_message,
-            state=state,
-            language_model=self.language_model,
-            include_conversation=True,
-        )
-
-        llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
-
-        return {
-            "ui_payload": "",
-            "next_node": "data_availability",
-            "context_distillation": llm_output,
         }
 
     def __data_availability(
@@ -344,6 +343,7 @@ class Graph:
                 sys._getframe(0).f_code.co_name + "_from_data_retrieval_plan_observation"
             ]
 
+            context_prompt += self.composer.get_dataframe_schema_info()
             context_prompt += self.composer.get_data_retrieval_plan_observation_feedback(state)
 
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
@@ -380,9 +380,7 @@ class Graph:
         if state["data_retrieval_plan"]:
             if state["data_retrieval_plan"].sql_query:
                 sql_query: str = state["data_retrieval_plan"].sql_query
-                schema: dict[Literal["tables", "columns"], list[str] | dict[str, Any]] = (
-                    self.context_manager.inspect_external_database()
-                )
+                schema: dict[str, list[dict[str, Any]]] = self.context_manager.inspect_external_database()
 
                 if error := self.composer.validate_sql_query(sql_query, schema):
                     return Command(
@@ -673,6 +671,9 @@ class Graph:
         """
         Node to handle analytical response.
         """
+        if state["infographic_plan"] and state["analytical_result"]:
+            state["analytical_result"].content += f"\n\n{state['infographic_plan'].introduction_text}\n"
+
         return {
             "ui_payload": "",
             "next_node": "summarization",
@@ -768,7 +769,7 @@ class Graph:
                 content: str = "import streamlit as st\n"
                 content += "from pathlib import Path\n"
                 content += self.composer.get_infographic_python_code(state, runtime)
-                content += "st.plotly_chart(fig, on_select='ignore')\n"
+                content += "\nst.plotly_chart(fig, on_select='ignore')\n"
                 content_list = content.split("\n")
 
                 for index, line in enumerate(content_list):
@@ -841,7 +842,8 @@ class Graph:
         Node to handle summarization.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        system_message: SystemMessage = SystemMessage(system_prompt)
+        context_prompt: str = self.composer.get_infographic_plan(state)
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
         llm, llm_input = self.composer.prepare_invocation(
             system_message=system_message,
@@ -903,6 +905,11 @@ class Graph:
         )
 
         self.graph_builder.add_node(
+            node="context_distillation",
+            action=self.__context_distillation,
+        )
+
+        self.graph_builder.add_node(
             node="analytical_requirement",
             action=self.__analytical_requirement,
         )
@@ -910,11 +917,6 @@ class Graph:
         self.graph_builder.add_node(
             node="direct_response",
             action=self.__direct_response,
-        )
-
-        self.graph_builder.add_node(
-            node="context_distillation",
-            action=self.__context_distillation,
         )
 
         self.graph_builder.add_node(
@@ -1000,7 +1002,7 @@ class Graph:
 
         self.graph_builder.add_edge(start_key="direct_response", end_key="summarization")
 
-        self.graph_builder.add_edge(start_key="context_distillation", end_key="data_availability")
+        self.graph_builder.add_edge(start_key="context_distillation", end_key="analytical_requirement")
 
         self.graph_builder.add_edge(
             start_key="data_unavailability_response",

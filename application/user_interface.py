@@ -26,13 +26,13 @@ from .cache import (
     load_infographic,
 )
 from .runtime import SessionMemory
+from .stages import (
+    enable_interactive_graph,
+    images_source_path,
+)
 from agent import (
     Context,
     State,
-)
-from agent.stages import (
-    enable_interactive_graph,
-    images_source_path,
 )
 from memory.database import MemoryManager
 from memory.infographic import (

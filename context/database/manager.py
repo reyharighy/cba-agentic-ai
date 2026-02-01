@@ -2,10 +2,7 @@
 
 # standard
 from collections.abc import Sequence
-from typing import (
-    Any,
-    Literal,
-)
+from typing import Any
 
 # third-party
 import pandas as pd
@@ -13,10 +10,12 @@ from sqlalchemy import (
     Engine,
     DATE,
     DATETIME,
+    INTEGER,
     Row,
     TextClause,
     TIMESTAMP,
-    VARCHAR,
+    NUMERIC,
+    UUID,
     create_engine,
     inspect,
     text,
@@ -34,12 +33,7 @@ class ContextManager:
         """
         self.external: Engine = create_engine(external_db_url)
 
-    def inspect_external_database(
-        self,
-    ) -> dict[
-        Literal["tables", "columns"],
-        list[str] | dict[str, Any],
-    ]:
+    def inspect_external_database(self) -> dict[str, list[dict[str, Any]]]:
         """
         Inspect external database and return table names and column details.
         """
@@ -49,6 +43,10 @@ class ContextManager:
 
         with self.external.begin() as connection:
             for table_name in table_names:
+                # Tables of "chat_histories" and "short_memories" are part of internal database.
+                # As we use the same instance of PostgreSQL for both internal and external databases, we need to skip these tables during inspection.
+                # In reality, these tables won't exist in external database.
+                # Mind to remove this condition if using separate instances for internal and external databases.
                 if table_name in ["chat_histories", "short_memories"]:
                     continue
 
@@ -67,11 +65,19 @@ class ContextManager:
                         )
                         and not isinstance(column["type"], DATE)
                     ):
+                        limit_stmt: str = (
+                            "LIMIT 1"
+                            if isinstance(column["type"], UUID)
+                            else "LIMIT 2"
+                            if isinstance(column["type"], NUMERIC) or isinstance(column["type"], INTEGER)
+                            else ""
+                        )
+
                         sql_query: TextClause = text(f"""
                             SELECT DISTINCT {column["name"]}
                             FROM {table_name}
                             WHERE {column["name"]} IS NOT NULL
-                            {"LIMIT 3" if not isinstance(column["type"], VARCHAR) else ""};
+                            {limit_stmt};
                         """)
 
                         result: Sequence[Row[Any]] = connection.execute(sql_query).fetchall()
@@ -109,15 +115,12 @@ class ContextManager:
                                 "name": column["name"],
                                 "type": column["type"],
                                 "comment": column["comment"],
-                                "earliest": earliest,
-                                "latest": latest,
+                                "earliest_timestamp": earliest,
+                                "latest_timestamp": latest,
                             }
                         )
 
-        return {
-            "tables": table_names,
-            "columns": table_columns,
-        }
+        return table_columns
 
     def extract_external_database(self, statement: str) -> ValueError | None:
         """
