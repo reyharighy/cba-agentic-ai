@@ -9,7 +9,6 @@
 <em>Built with:</em>
 
 <img src="https://img.shields.io/badge/Python-3776AB.svg?style=flat&logo=Python&logoColor=white">
-<img src="https://img.shields.io/badge/Streamlit-FF4B4B.svg?style=flat&logo=Streamlit&logoColor=white">
 <img src="https://img.shields.io/badge/LangChain-1C3C3C.svg?style=flat&logo=LangChain&logoColor=white">
 <img src="https://img.shields.io/badge/LangGraph-4B5563.svg?style=flat">
 
@@ -32,8 +31,7 @@ The system allows users to:
 - ask natural-language business questions,
 - have an LLM reason about intent and analytical strategy,
 - retrieve and compute over structured business data,
-- validate results through observation loops,
-- and present outputs via an interactive Streamlit UI.
+- and validate results through observation loops.
 
 This project is designed as a **research and learning platform** for agentic analytics — not a production BI tool.
 
@@ -109,7 +107,6 @@ This separation improves system stability.
 ```sh
 .
 ├── agent/              # LangGraph-based agent and node definitions
-├── application/        # Streamlit UI application
 ├── context/            # Runtime context objects shared across nodes
 ├── docker_script/      # Database initialization & synthetic data seeding
 ├── language_model/     # LLM abstraction layer
@@ -136,7 +133,6 @@ This separation improves system stability.
 
   Explicit state transitions and execution control.
 
-- 🌐 **Interactive Streamlit UI**
 - 🐳 **Fully Containerized Execution**
 - 🗃️ **External PostgreSQL Integration**
 - 🧪 **Synthetic Data Seeding for Development**
