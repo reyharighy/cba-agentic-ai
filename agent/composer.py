@@ -13,9 +13,7 @@ from uuid import UUID
 # third-party
 import pandas as pd
 import sqlglot
-from e2b_code_interpreter.code_interpreter_sync import (
-    Sandbox,
-)
+from e2b_code_interpreter.code_interpreter_sync import Sandbox, Execution, ExecutionError
 from groq import BadRequestError
 from langchain_core.language_models import (
     BaseChatModel,
@@ -43,58 +41,66 @@ from sqlglot import (
     ParseError,
 )
 
+from language_model.schema.structured_output import (
+    AnalyticalPlan,
+    AnalyticalPlanObservation,
+    DataAvailability,
+    DataRetrievalPlan,
+    DataRetrievalPlanObservation,
+    InfographicPlan,
+    InfographicPlanObservation,
+    InfographicRequirement,
+    IntentComprehension,
+    RequestClassification,
+)
+
 # internal
-from .runtime import Context
-from .state import State
-from context.database import ContextManager
-from context.datasets import dataset_file_path
-from memory.database import MemoryManager
+from agent import State, Context
+from context import ContextManager
+from context.datasets import dataset_file_path, unlink_dataset_file
+from memory import MemoryManager
 from memory.models import (
-    ChatHistory,
+    ChatHistoryCreate,
     ChatHistoryShow,
-    ShortMemory,
+    ShortMemoryCreate,
 )
 
 
 class Composer:
-    def __init__(self, context_manager: ContextManager, memory_manager: MemoryManager) -> None:
+    def __init__(
+        self, context_manager: ContextManager, memory_manager: MemoryManager, language_model: BaseChatModel
+    ) -> None:
         """
         Initialize the composer with access to contextual runtime and memory management.
         """
         self.context_manager: ContextManager = context_manager
         self.memory_manager: MemoryManager = memory_manager
+        self.language_model: BaseChatModel = language_model
 
     def get_conversation_summary_list(self) -> str:
         """
         Retrieve a summary list of past conversations from short-term memory.
         """
-        short_memories: list[ShortMemory] = self.memory_manager.index_short_memory()
+        context_prompt: str = "\n\nConversation history summary:\n"
 
-        if short_memories:
-            context_prompt: str = "\n\nConversation history summary:\n"
+        for short_memory in self.memory_manager.index_short_memory():
+            context_prompt += f"\n[TURN-{short_memory.turn_num}]: {short_memory.summary}"
 
-            for short_memory in short_memories:
-                context_prompt += f"\n[TURN-{short_memory.turn_num}]: {short_memory.summary}"
+        return context_prompt
 
-            return context_prompt
-
-        return "\n\nNo conversation history available."
-
-    def prepare_invocation(
+    def get_runnable_with_input(
         self,
-        system_message: SystemMessage,
         state: State,
-        language_model: BaseChatModel,
+        system_message: SystemMessage,
         schema: type[BaseModel] | None = None,
-        include_conversation: bool = False,
     ) -> tuple[Runnable[LanguageModelInput, dict[Any, Any] | BaseModel] | BaseChatModel, list[AnyMessage]]:
         """
-        Prepare the language model invocation with system message and state.
+        Prepare the runnable language model and its message input.
         """
         if schema:
             llm = cast(
                 typ=Runnable[LanguageModelInput, dict[Any, Any] | BaseModel],
-                val=language_model.with_structured_output(
+                val=self.language_model.with_structured_output(
                     schema=schema,
                     method="json_schema",
                 ),
@@ -108,71 +114,38 @@ class Composer:
                 stop_after_attempt=3,
             )
         else:
-            llm = language_model
+            llm = self.language_model
 
-        if state["context_distillation"] and not include_conversation:
-            content: str = cast(str, state["context_distillation"].content)
-            human_message: HumanMessage = HumanMessage(content)
-            llm_input: list[AnyMessage] = [system_message, human_message]
+        llm_input: list[AnyMessage] = [system_message]
+
+        if state["context_distillation"]:
+            llm_input.extend([HumanMessage(state["context_distillation"].content)])
         else:
-            llm_input: list[AnyMessage] = self.__prepare_language_model_message_input(
-                system_message=system_message,
-                state=state,
-                include_conversation=include_conversation,
-            )
+            for turn_num in cast(IntentComprehension, state["intent_comprehension"]).relevant_turns:
+                params: ChatHistoryShow = ChatHistoryShow(turn_num=int(turn_num))
 
-        if state["analytical_result"] and state["next_node"] != "summarization":
+                for chat in self.memory_manager.show_chat_history(params):
+                    llm_input.extend(
+                        [HumanMessage(content=chat.content)]
+                        if chat.role == "human"
+                        else [AIMessage(content=chat.content)]
+                    )
+
+            llm_input.extend(state["messages"])
+
+        if state["analytical_result"] and state["current_node"] != "summarization":
             llm_input.extend([state["analytical_result"]])
 
         return (llm, llm_input)
-
-    def __prepare_language_model_message_input(
-        self, system_message: SystemMessage, state: State, include_conversation: bool = False
-    ) -> list[AnyMessage]:
-        """
-        Prepare the language model message input with system message and state.
-        """
-        llm_input: list[AnyMessage] = [system_message]
-
-        if include_conversation:
-            llm_input.extend(self.__get_relevant_conversation(state))
-
-        llm_input.extend(state["messages"])
-
-        return llm_input
-
-    def __get_relevant_conversation(self, state: State) -> list[AnyMessage]:
-        """
-        Retrieve relevant past conversations based on intent comprehension.
-        """
-        llm_input: list[AnyMessage] = []
-
-        if state["intent_comprehension"]:
-            for turn_num in state["intent_comprehension"].relevant_turns:
-                params: ChatHistoryShow = ChatHistoryShow(turn_num=int(turn_num))
-                relevant_turn: list[ChatHistory] = self.memory_manager.show_chat_history(params)
-
-                for chat in relevant_turn:
-                    if chat.role == "Human":
-                        llm_input.extend([HumanMessage(content=chat.content)])
-                    else:
-                        llm_input.extend([AIMessage(content=chat.content)])
-
-        return llm_input
 
     def get_punt_response_feedback(self, state: State) -> str:
         """
         Retrieve feedback for punt response based on request classification.
         """
-        if state["request_classification"]:
-            context_prompt: str = "\n\nFeedback why the user's request cannot be handled with the external database: "
-            context_prompt += state["request_classification"].rationale
+        context_prompt: str = "\n\nFeedback why the user's request cannot be handled with the external database: "
+        context_prompt += cast(RequestClassification, state["request_classification"]).rationale
 
-            return context_prompt
-
-        raise ValueError(
-            f"'request_classification' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-        )
+        return context_prompt
 
     def get_database_schema_info(self) -> str:
         """
@@ -209,27 +182,19 @@ class Composer:
         """
         Retrieve feedback for data unavailability response based on data availability.
         """
-        if state["data_availability"]:
-            context_prompt: str = "\n\nFeedback why the required data is unavailable in the external database: "
-            context_prompt += state["data_availability"].rationale
+        context_prompt: str = "\n\nFeedback why the required data is unavailable in the external database: "
+        context_prompt += cast(DataAvailability, state["data_availability"]).rationale
 
-            return context_prompt
-
-        raise ValueError(f"'data_availability' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+        return context_prompt
 
     def get_data_retrieval_plan(self, state: State) -> str:
         """
         Retrieve the data retrieval plan including SQL query and rationale.
         """
-        if state["data_retrieval_plan"]:
-            context_prompt: str = "\n\nSQL query generated to extract data from external database: "
-            context_prompt += str(state["data_retrieval_plan"].sql_query)
+        context_prompt: str = "\n\nData retrieval plan that was generated to answer current request: "
+        context_prompt: str = str(cast(DataRetrievalPlan, state["data_retrieval_plan"]))
 
-            context_prompt += "\n\nRationale for the data retrieval plan: "
-            context_prompt += f"{state['data_retrieval_plan'].rationale}"
-            return context_prompt
-
-        raise ValueError(f"'data_retrieval_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+        return context_prompt
 
     def get_dataframe_schema_info(self) -> str:
         """
@@ -270,6 +235,7 @@ class Composer:
             context_prompt += dset_attrs
 
             return context_prompt
+
         except EmptyDataError as _:
             return "\n\nNo dataframe schema information available."
 
@@ -277,52 +243,175 @@ class Composer:
         """
         Retrieve feedback for data retrieval plan execution errors.
         """
-        if state["data_retrieval_plan_execution"]:
-            context_prompt: str = "\n\nFeedback on the data retrieval execution from external database: "
-            context_prompt += str(state["data_retrieval_plan_execution"])
+        context_prompt: str = "\n\nFeedback on the data retrieval execution from external database: "
+        context_prompt += cast(Execution, state["data_retrieval_plan_execution"]).logs.stdout[0]
 
-            return context_prompt
-
-        raise ValueError(
-            f"'data_retrieval_plan_execution' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-        )
+        return context_prompt
 
     def get_data_retrieval_plan_observation_feedback(self, state: State) -> str:
         """
         Retrieve feedback for data retrieval plan observation.
         """
-        if state["data_retrieval_plan_observation"]:
-            context_prompt: str = "\n\nFeedback why the data retrieval result is insufficient: "
-            context_prompt += state["data_retrieval_plan_observation"].rationale
+        context_prompt: str = "\n\nFeedback why the data retrieval result is insufficient: "
+        context_prompt += cast(DataRetrievalPlanObservation, state["data_retrieval_plan_observation"]).rationale
 
-            return context_prompt
+        return context_prompt
 
-        raise ValueError(
-            f"'data_retrieval_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-        )
+    def get_analytical_python_code(self, state: State, runtime: Runtime[Context]) -> str:
+        """
+        Retrieve the analytical Python code including bootstrap.
+        """
+        analysis_plan: AnalyticalPlan = cast(AnalyticalPlan, state["analytical_plan"])
+        code: str = runtime.context.analytical_sandbox_bootstrap[analysis_plan.analysis_type]
 
-    def validate_sql_query(self, sql_query: str, schema: dict[str, list[dict[str, Any]]]) -> ValueError | None:
+        for analytical_step in analysis_plan.plan:
+            for line in analytical_step.python_code.replace("\\n", "\n").replace("\\t", "\t").split("\n"):
+                code += "\n" + line + "\n"
+
+        return code
+
+    def get_analytical_plan(self, state: State, original: bool = False) -> str:
+        """
+        Retrieve the analytical plan with step-by-step rationale.
+        """
+        context_prompt: str = "\n\nAnalytical plan that was generated previously: "
+
+        for analytical_step in cast(AnalyticalPlan, state["analytical_plan"]).plan:
+            context_prompt += (
+                f"\n{analytical_step.number}. {analytical_step.rationale}" if not original else f"\n- {analytical_step}"
+            )
+
+        return context_prompt
+
+    def get_analytical_plan_execution_feedback(self, state: State) -> str:
+        """
+        Retrieve feedback for analytical plan execution errors.
+        """
+        context_prompt: str = "\n\nTraceback error logs from the sandbox environment: "
+        context_prompt += cast(ExecutionError, cast(Execution, state["analytical_plan_execution"]).error).traceback
+
+        return context_prompt
+
+    def get_analytical_plan_observation_feedback(self, state: State) -> str:
+        """
+        Retrieve feedback for analytical plan observation.
+        """
+        context_prompt: str = "\n\nFeedback why the analytical plan execution result is insufficient: "
+        context_prompt += cast(AnalyticalPlanObservation, state["analytical_plan_observation"]).rationale
+
+        return context_prompt
+
+    def get_analytical_plan_execution_result(self, state: State) -> str:
+        """
+        Retrieve the analytical plan execution result logs.
+        """
+        context_prompt: str = "\n\nExecution output logs of the analytical plan: "
+        context_prompt += cast(Execution, state["analytical_plan_execution"]).logs.stdout[0]
+
+        return context_prompt
+
+    def get_analytical_plan_observation_result(self, state: State) -> str:
+        """
+        Retrieve the analytical plan observation rationale.
+        """
+        context_prompt: str = "\n\nObservation on the analytical plan execution result: "
+        context_prompt += cast(AnalyticalPlanObservation, state["analytical_plan_observation"]).rationale
+
+        return context_prompt
+
+    def get_infographic_requirement_rationale(self, state: State) -> str:
+        """
+        Retrieve the rationale for infographic requirement.
+        """
+        context_prompt: str = "\n\nRationale for the infographic requirement: "
+        context_prompt += cast(InfographicRequirement, state["infographic_requirement"]).rationale
+
+        return context_prompt
+
+    def get_infographic_plan(self, state: State) -> str:
+        """
+        Retrieve the infographic plan with rationale.
+        """
+        context_prompt: str = "\n\nInfographic plan that was generated to answer current request: "
+        context_prompt += str(cast(InfographicPlan, state["infographic_plan"]))
+
+        return context_prompt
+
+    def get_infographic_plan_execution_feedback(self, state: State) -> str:
+        """
+        Retrieve feedback for infographic plan execution errors.
+        """
+        context_prompt: str = "\n\nTraceback error logs from the sandbox environment: "
+        context_prompt += cast(ExecutionError, cast(Execution, state["infographic_plan_execution"]).error).traceback
+
+        return context_prompt
+
+    def get_infographic_plan_observation_feedback(self, state: State) -> str:
+        """
+        Retrieve feedback for infographic plan observation.
+        """
+        context_prompt: str = "\n\nFeedback why the infographic plan execution result is insufficient: "
+        context_prompt += cast(InfographicPlanObservation, state["infographic_plan_observation"]).rationale
+
+        return context_prompt
+
+    def get_infographic_python_code(self, state: State, runtime: Runtime[Context], on_sandbox: bool = False) -> str:
+        """
+        Retrieve the infographic Python code including bootstrap.
+        """
+        code: str = runtime.context.infographic_sandbox_bootstrap
+
+        for line in (
+            cast(InfographicPlan, state["infographic_plan"])
+            .python_code.replace("\\n", "\n")
+            .replace("\\t", "\t")
+            .split("\n")
+        ):
+            code += "\n" + line if line != "fig" else "" + "\n"
+
+        code += "\n_ = None" if on_sandbox else ""
+
+        return code
+
+    # Should the following method be part of Composer class?
+
+    def validate_sql_query(self, state: State) -> ValueError | None:
         """
         Validate the SQL query against the provided database schema.
         """
         try:
-            tree: Expression = sqlglot.parse_one(sql_query)
+            if state["data_retrieval_plan"]:
+                tree: Expression = sqlglot.parse_one(state["data_retrieval_plan"].sql_query)
 
-            if forbidden := tree.find(exp.Delete, exp.Update, exp.Insert, exp.Drop):
-                return ValueError(f"Forbidden SQL operation: {str(forbidden).split()[0]}")
+                if forbidden := tree.find(exp.Delete, exp.Update, exp.Insert, exp.Drop):
+                    return ValueError(f"Forbidden SQL operation: {str(forbidden).split()[0]}")
 
-            tables: list[str] = [table.name for table in tree.find_all(exp.Table)]
-            columns: list[str] = [column.name for column in tree.find_all(exp.Column)]
+                tables: list[str] = [table.name for table in tree.find_all(exp.Table)]
+                columns: list[str] = [column.name for column in tree.find_all(exp.Column)]
+                schema: dict[str, list[dict[str, Any]]] = self.context_manager.inspect_external_database()
 
-            for table in tables:
-                if table not in schema.keys():
-                    return ValueError(f"Unknown table: {table}")
+                for table in tables:
+                    if table not in schema.keys():
+                        return ValueError(f"Unknown table: {table}")
 
-            for column in columns:
-                if column not in [col["name"] for col_list in schema.values() for col in col_list]:
-                    return ValueError(f"Unknown column: {column}")
+                for column in columns:
+                    if column not in [col["name"] for col_list in schema.values() for col in col_list]:
+                        return ValueError(f"Unknown column: {column}")
+            else:
+                return ValueError(
+                    f"'data_retrieval_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
+                )
         except ParseError as e:
             return ValueError(f"Invalid SQL Syntax: {e}")
+
+    def extract_external_database(self, state: State) -> ValueError | None:
+        """
+        Extract data from external database based on the provided SQL statement and save it to a CSV file.
+        """
+        if state["data_retrieval_plan"]:
+            self.context_manager.extract_external_database(state["data_retrieval_plan"].sql_query)
+
+        raise ValueError(f"'data_retrieval_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
 
     def prepare_sandbox_environment(self) -> Sandbox:
         """
@@ -335,163 +424,24 @@ class Composer:
 
         return sandbox
 
-    def get_analytical_python_code(self, state: State, runtime: Runtime[Context]) -> str:
+    def save_current_interaction(self, state: State, llm_output: AIMessage, turn_num: int) -> None:
         """
-        Retrieve the analytical Python code including bootstrap.
+        Save the current interaction including messages and short-term memory summary.
         """
-        if state["analytical_plan"]:
-            code: str = runtime.context.analytical_sandbox_bootstrap[state["analytical_plan"].analysis_type]
+        for message in state["messages"]:
+            create_chat_history_params: ChatHistoryCreate = ChatHistoryCreate(
+                turn_num=turn_num,
+                role="human" if message.type == "human" else "ai",
+                content=cast(str, message.content),
+            )
 
-            for analytical_step in state["analytical_plan"].plan:
-                for line in analytical_step.python_code.replace("\\n", "\n").replace("\\t", "\t").split("\n"):
-                    code += "\n" + line + "\n"
+            self.memory_manager.store_chat_history(create_chat_history_params())
 
-            return code
-
-        raise ValueError(f"'analytical_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
-
-    def get_analytical_plan(self, state: State, original: bool = False) -> str:
-        """
-        Retrieve the analytical plan with step-by-step rationale.
-        """
-        if state["analytical_plan"]:
-            context_prompt: str = "\n\nAnalytical plan that was generated previously: "
-
-            for analytical_step in state["analytical_plan"].plan:
-                context_prompt += (
-                    f"\n{analytical_step.number}. {analytical_step.rationale}"
-                    if not original
-                    else f"\n- {analytical_step}"  # Still not optimized for original structure
-                )
-
-            return context_prompt
-
-        raise ValueError(f"'analytical_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
-
-    def get_analytical_plan_execution_feedback(self, state: State) -> str:
-        """
-        Retrieve feedback for analytical plan execution errors.
-        """
-        if state["analytical_plan_execution"] and state["analytical_plan_execution"].error:
-            context_prompt: str = "\n\nTraceback error logs from the sandbox environment: "
-            context_prompt += state["analytical_plan_execution"].error.traceback
-
-            return context_prompt
-
-        raise ValueError(
-            f"'analytical_plan_execution' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
+        create_short_memory_params: ShortMemoryCreate = ShortMemoryCreate(
+            turn_num=turn_num,
+            summary=cast(str, llm_output.content),
         )
 
-    def get_analytical_plan_observation_feedback(self, state: State) -> str:
-        """
-        Retrieve feedback for analytical plan observation.
-        """
-        if state["analytical_plan_observation"]:
-            context_prompt: str = "\n\nFeedback why the analytical plan execution result is insufficient: "
-            context_prompt += state["analytical_plan_observation"].rationale
+        self.memory_manager.store_short_memory(create_short_memory_params())
 
-            return context_prompt
-
-        raise ValueError(
-            f"'analytical_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-        )
-
-    def get_analytical_plan_execution_result(self, state: State) -> str:
-        """
-        Retrieve the analytical plan execution result logs.
-        """
-        if state["analytical_plan_execution"]:
-            context_prompt: str = "\n\nExecution output logs of the analytical plan: "
-            context_prompt += str(state["analytical_plan_execution"].logs.stdout[0])
-
-            return context_prompt
-
-        raise ValueError(
-            f"'analytical_plan_execution' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-        )
-
-    def get_analytical_plan_observation_result(self, state: State) -> str:
-        """
-        Retrieve the analytical plan observation rationale.
-        """
-        if state["analytical_plan_observation"]:
-            context_prompt: str = "\n\nObservation on the analytical plan execution result: "
-            context_prompt += state["analytical_plan_observation"].rationale
-
-            return context_prompt
-
-        raise ValueError(
-            f"'analytical_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-        )
-
-    def get_infographic_requirement_rationale(self, state: State) -> str:
-        """
-        Retrieve the rationale for infographic requirement.
-        """
-        if state["infographic_requirement"]:
-            context_prompt: str = "\n\nRationale for the infographic requirement: "
-            context_prompt += state["infographic_requirement"].rationale
-
-            return context_prompt
-
-        raise ValueError(
-            f"'infographic_requirement' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-        )
-
-    def get_infographic_plan(self, state: State) -> str:
-        """
-        Retrieve the infographic plan with rationale.
-        """
-        if state["infographic_plan"]:
-            context_prompt: str = "\n\nInfographic plan that was generated to answer current request: "
-            context_prompt += str(state["infographic_plan"])
-
-            return context_prompt
-
-        raise ValueError(
-            f"'infographic_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node if infographic is required"
-        )
-
-    def get_infographic_plan_execution_feedback(self, state: State) -> str:
-        """
-        Retrieve feedback for infographic plan execution errors.
-        """
-        if state["infographic_plan_execution"] and state["infographic_plan_execution"].error:
-            context_prompt: str = "\n\nTraceback error logs from the sandbox environment: "
-            context_prompt += state["infographic_plan_execution"].error.traceback
-
-            return context_prompt
-
-        raise ValueError(
-            f"'infographic_plan_execution' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-        )
-
-    def get_infographic_plan_observation_feedback(self, state: State) -> str:
-        """
-        Retrieve feedback for infographic plan observation.
-        """
-        if state["infographic_plan_observation"]:
-            context_prompt: str = "\n\nFeedback why the infographic plan execution result is insufficient: "
-            context_prompt += state["infographic_plan_observation"].rationale
-
-            return context_prompt
-
-        raise ValueError(
-            f"'infographic_plan_observation' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-        )
-
-    def get_infographic_python_code(self, state: State, runtime: Runtime[Context], on_sandbox: bool = False) -> str:
-        """
-        Retrieve the infographic Python code including bootstrap.
-        """
-        if state["infographic_plan"]:
-            code: str = runtime.context.infographic_sandbox_bootstrap
-
-            for line in state["infographic_plan"].python_code.replace("\\n", "\n").replace("\\t", "\t").split("\n"):
-                code += "\n" + line if line != "fig" else "" + "\n"
-
-            code += "\n_ = None" if on_sandbox else ""
-
-            return code
-
-        raise ValueError(f"'infographic_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+        unlink_dataset_file()

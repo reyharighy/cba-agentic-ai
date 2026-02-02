@@ -35,10 +35,8 @@ from langgraph.runtime import Runtime
 from langgraph.types import Command
 
 # internal
-from .composer import Composer
-from .runtime import Context
-from .state import State
-from context.database import ContextManager
+from agent import Composer, State, Context
+from context import ContextManager
 from context.datasets import dataset_file_path
 from language_model.schema import (
     IntentComprehension,
@@ -53,13 +51,9 @@ from language_model.schema import (
     InfographicPlan,
     InfographicPlanObservation,
 )
-from memory.database import MemoryManager
+from memory import MemoryManager
 from memory.infographic import (
     infographic_dir_path,
-)
-from memory.models import (
-    ChatHistoryCreate,
-    ShortMemoryCreate,
 )
 
 
@@ -70,10 +64,9 @@ class Graph:
         """
         Initialize the Graph class.
         """
-        self.context_manager: ContextManager = context_manager
-        self.memory_manager: MemoryManager = memory_manager
-        self.composer: Composer = Composer(context_manager, memory_manager)
-        self.language_model: BaseChatModel = language_model
+        self.composer: Composer = Composer(
+            context_manager=context_manager, memory_manager=memory_manager, language_model=language_model
+        )
 
         self.graph_builder: StateGraph[State, Context, State, State] = StateGraph(
             state_schema=State,
@@ -88,10 +81,9 @@ class Graph:
         context_prompt: str = self.composer.get_conversation_summary_list()
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=IntentComprehension,
         )
 
@@ -100,7 +92,7 @@ class Graph:
 
         return {
             "ui_payload": "Identifying request category...",
-            "next_node": "request_classification",
+            "current_node": "request_classification",
             "intent_comprehension": serialized_output,
         }
 
@@ -118,12 +110,10 @@ class Graph:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=RequestClassification,
-            include_conversation=True,
         )
 
         llm_output = llm.invoke(llm_input)
@@ -134,7 +124,7 @@ class Graph:
                 goto="context_distillation",
                 update={
                     "ui_payload": "Refining request...",
-                    "next_node": "context_distillation",
+                    "current_node": "context_distillation",
                     "request_classification": serialized_output,
                 },
             )
@@ -143,7 +133,7 @@ class Graph:
             goto="punt_response",
             update={
                 "ui_payload": "Wrapping up...",
-                "next_node": "punt_response",
+                "current_node": "punt_response",
                 "request_classification": serialized_output,
             },
         )
@@ -156,17 +146,16 @@ class Graph:
         context_prompt: str = self.composer.get_punt_response_feedback(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
         )
 
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
             "ui_payload": "Ready to go!",
-            "next_node": None,
+            "current_node": None,
             "messages": [llm_output],
         }
 
@@ -177,18 +166,16 @@ class Graph:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
-            include_conversation=True,
         )
 
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
             "ui_payload": "Surveying database landscape...",
-            "next_node": "data_availability",
+            "current_node": "data_availability",
             "context_distillation": llm_output,
         }
 
@@ -203,10 +190,9 @@ class Graph:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=AnalyticalRequirement,
         )
 
@@ -218,7 +204,7 @@ class Graph:
                 goto="data_availability",
                 update={
                     "ui_payload": "",
-                    "next_node": "data_availability",
+                    "current_node": "data_availability",
                     "analytical_requirement": serialized_output,
                 },
             )
@@ -227,7 +213,7 @@ class Graph:
             goto="direct_response",
             update={
                 "ui_payload": "Wrapping up...",
-                "next_node": "direct_response",
+                "current_node": "direct_response",
                 "analytical_requirement": serialized_output,
             },
         )
@@ -239,18 +225,16 @@ class Graph:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
-            include_conversation=True,
         )
 
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
             "ui_payload": "Ready to go!",
-            "next_node": "summarization",
+            "current_node": "summarization",
             "messages": [llm_output],
         }
 
@@ -269,10 +253,9 @@ class Graph:
         context_prompt: str = self.composer.get_database_schema_info()
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=DataAvailability,
         )
 
@@ -284,7 +267,7 @@ class Graph:
                 goto="data_retrieval_plan",
                 update={
                     "ui_payload": "Structuring data fetch...",
-                    "next_node": "data_retrieval_plan",
+                    "current_node": "data_retrieval_plan",
                     "data_availability": serialized_output,
                 },
             )
@@ -293,7 +276,7 @@ class Graph:
             goto="data_unavailability_response",
             update={
                 "ui_payload": "Wrapping up...",
-                "next_node": "data_unavailability_response",
+                "current_node": "data_unavailability_response",
                 "data_availability": serialized_output,
             },
         )
@@ -306,18 +289,16 @@ class Graph:
         context_prompt: str = self.composer.get_data_unavailability_response_feedback(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
-            include_conversation=True,
         )
 
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
             "ui_payload": "Ready to go!",
-            "next_node": "summarization",
+            "current_node": "summarization",
             "messages": [llm_output],
         }
 
@@ -348,10 +329,9 @@ class Graph:
 
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=DataRetrievalPlan,
         )
 
@@ -360,7 +340,7 @@ class Graph:
 
         return {
             "ui_payload": "Implementing retrieval plan...",
-            "next_node": "data_retrieval_plan_execution",
+            "current_node": "data_retrieval_plan_execution",
             "data_retrieval_plan": serialized_output,
             "data_retrieval_plan_execution": None,
             "data_retrieval_plan_observation": None,
@@ -379,25 +359,22 @@ class Graph:
         """
         if state["data_retrieval_plan"]:
             if state["data_retrieval_plan"].sql_query:
-                sql_query: str = state["data_retrieval_plan"].sql_query
-                schema: dict[str, list[dict[str, Any]]] = self.context_manager.inspect_external_database()
-
-                if error := self.composer.validate_sql_query(sql_query, schema):
+                if error := self.composer.validate_sql_query(state):
                     return Command(
                         goto="data_retrieval_plan",
                         update={
                             "ui_payload": "Refining retrieval strategy...",
-                            "next_node": "data_retrieval_plan",
+                            "current_node": "data_retrieval_plan",
                             "data_retrieval_plan_execution": error,
                         },
                     )
 
-                if error := self.context_manager.extract_external_database(sql_query):
+                if error := self.composer.extract_external_database(state):
                     return Command(
                         goto="data_retrieval_plan",
                         update={
                             "ui_payload": "Refining retrieval strategy...",
-                            "next_node": "data_retrieval_plan",
+                            "current_node": "data_retrieval_plan",
                             "data_retrieval_plan_execution": error,
                         },
                     )
@@ -406,7 +383,7 @@ class Graph:
                     goto="data_retrieval_plan_observation",
                     update={
                         "ui_payload": "Auditing data integrity...",
-                        "next_node": "data_retrieval_plan_observation",
+                        "current_node": "data_retrieval_plan_observation",
                     },
                 )
 
@@ -433,10 +410,9 @@ class Graph:
         context_prompt += self.composer.get_dataframe_schema_info()
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=DataRetrievalPlanObservation,
         )
 
@@ -448,7 +424,7 @@ class Graph:
                 goto="analytical_plan",
                 update={
                     "ui_payload": "Formulating analytical steps...",
-                    "next_node": "analytical_plan",
+                    "current_node": "analytical_plan",
                     "data_retrieval_plan_observation": serialized_output,
                 },
             )
@@ -457,7 +433,7 @@ class Graph:
             goto="data_retrieval_plan",
             update={
                 "ui_payload": "Refining retrieval strategy...",
-                "next_node": "data_retrieval_plan",
+                "current_node": "data_retrieval_plan",
                 "data_retrieval_plan_observation": serialized_output,
             },
         )
@@ -490,10 +466,9 @@ class Graph:
 
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=AnalyticalPlan,
         )
 
@@ -505,7 +480,7 @@ class Graph:
 
         return {
             "ui_payload": "Running analysis sequence...",
-            "next_node": "analytical_plan_execution",
+            "current_node": "analytical_plan_execution",
             "analytical_plan": serialized_output,
             "analytical_plan_execution": None,
             "analytical_plan_observation": None,
@@ -534,7 +509,7 @@ class Graph:
                 goto="analytical_plan",
                 update={
                     "ui_payload": "Recalibrating analytical logic...",
-                    "next_node": "analytical_plan",
+                    "current_node": "analytical_plan",
                     "analytical_plan_execution": execution,
                 },
             )
@@ -543,7 +518,7 @@ class Graph:
             goto="analytical_plan_observation",
             update={
                 "ui_payload": "Auditing insights...",
-                "next_node": "analytical_plan_observation",
+                "current_node": "analytical_plan_observation",
                 "analytical_plan_execution": execution,
             },
         )
@@ -569,10 +544,9 @@ class Graph:
         context_prompt += self.composer.get_analytical_plan_execution_result(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=AnalyticalPlanObservation,
         )
 
@@ -584,7 +558,7 @@ class Graph:
                 goto="analytical_result",
                 update={
                     "ui_payload": "Structuring insight...",
-                    "next_node": "analytical_result",
+                    "current_node": "analytical_result",
                     "analytical_plan_observation": serialized_output,
                 },
             )
@@ -593,7 +567,7 @@ class Graph:
             goto="analytical_plan",
             update={
                 "ui_payload": "Enhancing analytical precision...",
-                "next_node": "analytical_plan",
+                "current_node": "analytical_plan",
                 "analytical_plan_execution": None,
                 "analytical_plan_observation": serialized_output,
             },
@@ -609,18 +583,16 @@ class Graph:
         context_prompt += self.composer.get_analytical_plan_observation_result(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
-            include_conversation=True,
         )
 
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
         return {
             "ui_payload": "Identifying visual opportunities...",
-            "next_node": "infographic_requirement",
+            "current_node": "infographic_requirement",
             "analytical_result": llm_output,
         }
 
@@ -638,10 +610,9 @@ class Graph:
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         system_message: SystemMessage = SystemMessage(system_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=InfographicRequirement,
         )
 
@@ -653,7 +624,7 @@ class Graph:
                 goto="infographic_plan",
                 update={
                     "ui_payload": "Architecting chart schema...",
-                    "next_node": "infographic_plan",
+                    "current_node": "infographic_plan",
                     "infographic_requirement": serialized_output,
                 },
             )
@@ -662,7 +633,7 @@ class Graph:
             goto="analytical_response",
             update={
                 "ui_payload": "Wrapping up...",
-                "next_node": "analytical_response",
+                "current_node": "analytical_response",
                 "infographic_requirement": serialized_output,
             },
         )
@@ -673,7 +644,7 @@ class Graph:
         """
         return {
             "ui_payload": "Ready to go!",
-            "next_node": "summarization",
+            "current_node": "summarization",
             "messages": [state["analytical_result"]],
         }
 
@@ -706,10 +677,9 @@ class Graph:
 
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=InfographicPlan,
         )
 
@@ -719,7 +689,7 @@ class Graph:
 
         return {
             "ui_payload": "Painting insight canvas...",
-            "next_node": "infographic_plan_execution",
+            "current_node": "infographic_plan_execution",
             "infographic_plan": serialized_output,
             "infographic_plan_execution": None,
             "infographic_plan_observation": None,
@@ -746,7 +716,7 @@ class Graph:
                 goto="infographic_plan",
                 update={
                     "ui_payload": "Recalibrating visual map...",
-                    "next_node": "infographic_plan",
+                    "current_node": "infographic_plan",
                     "infographic_plan_execution": execution,
                 },
             )
@@ -764,7 +734,7 @@ class Graph:
                     file.write(dataset_file.read())
 
             with open(infographic_file_path, "x", encoding="utf-8") as file:
-                content: str = "import streamlit as st\n" # decouple this segment
+                content: str = "import streamlit as st\n"  # decouple this segment
                 content += "from pathlib import Path\n"
                 content += self.composer.get_infographic_python_code(state, runtime)
                 content += "\nst.plotly_chart(fig, on_select='ignore')\n"
@@ -783,7 +753,7 @@ class Graph:
             goto="infographic_plan_observation",
             update={
                 "ui_payload": "Evaluating graphic fidelity...",
-                "next_node": "infographic_plan_observation",
+                "current_node": "infographic_plan_observation",
             },
         )
 
@@ -806,10 +776,9 @@ class Graph:
         context_prompt += self.composer.get_infographic_plan(state)
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
             schema=InfographicPlanObservation,
         )
 
@@ -821,7 +790,7 @@ class Graph:
                 goto="analytical_response",
                 update={
                     "ui_payload": "Wrapping up...",
-                    "next_node": "analytical_response",
+                    "current_node": "analytical_response",
                     "infographic_plan_observation": serialized_output,
                 },
             )
@@ -830,7 +799,7 @@ class Graph:
             goto="infographic_plan",
             update={
                 "ui_payload": "Refining the visual blueprint...",
-                "next_node": "infographic_plan",
+                "current_node": "infographic_plan",
                 "infographic_plan_observation": serialized_output,
             },
         )
@@ -847,45 +816,23 @@ class Graph:
 
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
-        llm, llm_input = self.composer.prepare_invocation(
+        llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
             state=state,
-            language_model=self.language_model,
-            include_conversation=True,
         )
 
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
-        turn_num = runtime.context.turn_num + 1
 
-        create_chat_history_params: ChatHistoryCreate = ChatHistoryCreate(
-            turn_num=turn_num,
-            role="Human",
-            content=cast(str, state["messages"][0].content),
+        self.composer.save_current_interaction(
+            state=state,
+            llm_output=llm_output,
+            turn_num=runtime.context.turn_num + 1,
         )
 
-        self.memory_manager.store_chat_history(create_chat_history_params())
-
-        create_chat_history_params = ChatHistoryCreate(
-            turn_num=turn_num,
-            role="AI",
-            content=cast(
-                str,
-                state["messages"][1].content,
-            ),
-        )
-
-        self.memory_manager.store_chat_history(create_chat_history_params())
-
-        create_short_memory_params: ShortMemoryCreate = ShortMemoryCreate(
-            turn_num=turn_num,
-            summary=cast(str, llm_output.content),
-        )
-
-        self.memory_manager.store_short_memory(create_short_memory_params())
-
-        dataset_file_path.unlink()
-
-        return {"summarization": llm_output}
+        return {
+            "current_node": None,
+            "summarization": llm_output,
+        }
 
     def build_graph(
         self,

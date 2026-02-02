@@ -24,9 +24,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
 
 # internal
-from context.database.config import (
-    external_db_url,
-)
+from context.database import external_db_url
 
 
 def main() -> None:

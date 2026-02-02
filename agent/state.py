@@ -29,7 +29,7 @@ class State(MessagesState):
     """
 
     ui_payload: dict[str, str] | None
-    next_node: str | None
+    current_node: str | None
     intent_comprehension: IntentComprehension | None
     request_classification: RequestClassification | None
     analytical_requirement: AnalyticalRequirement | None
