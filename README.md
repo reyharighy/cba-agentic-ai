@@ -6,11 +6,13 @@
 
 <em>Agentic AI for Interactive Business Analytics & Reasoning</em>
 
+<em>Agent Service Edition (API-first)</em>
+
 <em>Built with:</em>
 
 <img src="https://img.shields.io/badge/Python-3776AB.svg?style=flat&logo=Python&logoColor=white">
-<img src="https://img.shields.io/badge/LangChain-1C3C3C.svg?style=flat&logo=LangChain&logoColor=white">
 <img src="https://img.shields.io/badge/LangGraph-4B5563.svg?style=flat">
+<img src="https://img.shields.io/badge/FastAPI-009688.svg?style=flat&logo=FastAPI&logoColor=white">
 
 <br>
 
@@ -24,31 +26,34 @@
 
 ## Overview
 
-**Conversational Business Analytics (CBA)** is an experimental, open-source system for building **agentic, LLM-driven analytical workflows** that can reason, compute, observe results, and optionally generate visualizations.
+**Conversational Business Analytics (CBA)** is an experimental, open-source system for building **agentic, LLM-driven analytical workflows** that can reason, compute, observe results, and expose those capabilities via a **service-oriented API**.
 
-The system allows users to:
+This branch focuses on **serving the agent as a FastAPI-based backend**, intended to be consumed by one or more external user interfaces (e.g. Streamlit, web apps, notebooks).
 
-- ask natural-language business questions,
-- have an LLM reason about intent and analytical strategy,
-- retrieve and compute over structured business data,
-- and validate results through observation loops.
+The system enables:
 
-This project is designed as a **research and learning platform** for agentic analytics — not a production BI tool.
+- natural-language business queries,
+- explicit analytical planning and execution,
+- structured reasoning over relational data,
+- observation-driven correction loops,
+- and optional downstream visualization handled *outside* the agent service.
+
+This project is a **research and learning platform** for agentic analytics — not a production BI tool.
 
 ---
 
 ## Project Status
 
-⚠️ **Active Development**
+⚠️ **Active Development – Architectural Refactor in Progress**
 
-The system is under active architectural evolution, focused on:
+This branch represents an ongoing transition to a **cleanly separated architecture**, with emphasis on:
 
-- improving reasoning reliability,
-- reducing prompt and execution failure propagation,
-- increasing debuggability of agent workflows,
-- and supporting optional downstream visualization without destabilizing analysis.
+- isolating the agent core from presentation concerns,
+- serving agent capabilities via a stable HTTP API,
+- improving observability and debuggability of agent workflows,
+- and enabling multiple UI clients without coupling.
 
-Breaking changes may occur as the architecture evolves.
+Breaking changes are expected while the service boundary stabilizes.
 
 ---
 
@@ -64,10 +69,10 @@ The system is built around a **Binary-Responsibility Agent Graph**, guided by th
 
 ### 1. Binary Branching
 
-Each node has **at most two outgoing paths**, ensuring that:
-- decisions remain local,
-- control flow is predictable,
-- and failure modes are easier to trace.
+Each node has **at most two outgoing paths**, ensuring:
+- localized decisions,
+- predictable control flow,
+- traceable failure modes.
 
 ### 2. Single Responsibility per Node
 
@@ -77,28 +82,28 @@ Each node performs **one clearly defined task**, such as:
 - request classification,
 - planning,
 - execution,
-- and observation.
+- observation.
 
-This reduces prompt complexity and limits error propagation.
+This limits prompt complexity and error propagation.
 
 ### 3. Explicit Planning–Execution–Observation Loops
 
-Both analytical reasoning and visualization workflows follow a consistent loop:
+Analytical reasoning follows a consistent loop:
 
-- **Plan**: generate a structured, constrained plan  
-- **Execution**: run code or actions in a controlled environment  
-- **Observation**: validate semantic and functional correctness  
+- **Plan** — generate a constrained, structured plan  
+- **Execute** — run code or actions in a controlled environment  
+- **Observe** — validate semantic and functional correctness  
 
 Failures trigger targeted correction loops rather than global retries.
 
-### 4. Downstream Visualization as Optional
+### 4. Visualization as a Downstream Concern
 
-Infographic / visualization generation is treated as a **post-analysis concern**:
+Visualization and infographic generation are treated as **post-analysis consumers** of agent output:
 - analytical correctness is established first,
-- visual output is generated only when relevant,
-- visualization failures do not invalidate analytical results.
+- visual output is optional,
+- visualization failures do not invalidate analysis.
 
-This separation improves system stability.
+This improves system robustness.
 
 ---
 
@@ -106,12 +111,12 @@ This separation improves system stability.
 
 ```sh
 .
-├── agent/              # LangGraph-based agent and node definitions
-├── context/            # Runtime context objects shared across nodes
+├── agent/              # LangGraph-based agent and node definitions (core logic)
+├── api/                # FastAPI service layer exposing the agent
+├── context/            # Runtime context shared across agent nodes
 ├── docker_script/      # Database initialization & synthetic data seeding
 ├── language_model/     # LLM abstraction layer
-├── memory/             # Conversational and short-term memory persistence
-└── main.py             # Application entry point
+└── memory              # Conversational and short-term memory persistence
 ```
 
 ## Features
@@ -132,11 +137,14 @@ This separation improves system stability.
 
   Explicit state transitions and execution control.
 
-- 🐳 **Fully Containerized Execution**
+- 🐳 **Containerized Agent Service**
+
+  FastAPI-based backend, UI-agnostic
+
 - 🗃️ **External PostgreSQL Integration**
 - 🧪 **Synthetic Data Seeding for Development**
 
-## Getting Started
+## Running the Agent Service (Development)
 
 ### Prerequisites
 
@@ -162,30 +170,24 @@ This project uses environment variables for configuration.
 
 - API keys (Groq, E2B, optional LangSmith)
 - PostgreSQL credentials (defaults work for Docker)
+- `AGENT_API_PORT` (default: 8000)
 
-### Installation
-
-Clone the repository:
+### Start the Service
 
 ```sh
-git clone https://github.com/reyharighy/cba-agentic-ai.git
-cd cba-agentic-ai
+docker compose up --build
 ```
 
----
-
-### Running the System
-
-Using docker:
+Once running, the agent API will be available at:
 
 ```sh
-docker compose up -d --build
+http://localhost:8000
 ```
 
-Then open:
+Health check endpoint:
 
 ```sh
-http://localhost:8501
+GET /health
 ```
 
 ## Synthetic Data & External Database
@@ -216,3 +218,12 @@ This allows:
 - Explicit state > implicit magic
 - If something is ambiguous, it should probably be a schema
 - If something is implicit, it should probably be a graph edge
+- UI concerns do not belong in the agent core or service layer
+
+<br>
+
+---
+
+<div align="left"><a href="#top">⬆ Return</a></div>
+
+---
