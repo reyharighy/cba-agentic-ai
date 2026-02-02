@@ -982,7 +982,6 @@ You MUST NOT:
     - Invent columns, metrics, or dataset semantics
     - Generate matplotlib or seaborn code
     - Save files or export visualization artifacts
-    - Use Streamlit APIs or UI rendering logic
     - Describe or generate the final visual output in text
     - Execute code or simulate execution results
     - Use markdown, bullet points, or narrative prose outside schema fields
@@ -1056,7 +1055,6 @@ You MUST NOT:
     - Invent columns or dataset semantics
     - Generate matplotlib or seaborn code
     - Save files or export visualization artifacts
-    - Use Streamlit APIs or UI rendering logic
     - Describe or generate the final visual output in text
     - Execute code or simulate execution results
     - Suggest alternative analyses unrelated to the feedback

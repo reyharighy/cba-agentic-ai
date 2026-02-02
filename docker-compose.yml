@@ -1,14 +1,20 @@
 services:
-  streamlit:
+  agent-api:
     build:
       context: .
       args:
-        STREAMLIT_PORT: ${STREAMLIT_PORT}
         WORKDIR_PATH: ${WORKDIR_PATH}
     env_file:
       - .env
+    command: >
+      uv run uvicorn api.main:app
+      --host 0.0.0.0
+      --port ${AGENT_API_PORT}
+      --reload
+      --reload-dir ${WORKDIR_PATH}
+      --reload-delay 0.5
     ports:
-      - "${STREAMLIT_PORT}:${STREAMLIT_PORT}"
+      - "${AGENT_API_PORT}:${AGENT_API_PORT}"
     volumes:
       - './:${WORKDIR_PATH}'
     networks:

@@ -29,9 +29,6 @@ wheels/
 *.sqlite
 *.sqlite3
 
-# Streamlit cache (if any)
-.streamlit/
-
 # Docker files themselves (optional, but clean)
 docker-compose.yml
 Dockerfile

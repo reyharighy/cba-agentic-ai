@@ -111,7 +111,6 @@ This separation improves system stability.
 ├── docker_script/      # Database initialization & synthetic data seeding
 ├── language_model/     # LLM abstraction layer
 ├── memory/             # Conversational and short-term memory persistence
-├── util/               # Shared utilities
 └── main.py             # Application entry point
 ```
 

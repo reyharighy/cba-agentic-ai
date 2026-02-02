@@ -764,7 +764,7 @@ class Graph:
                     file.write(dataset_file.read())
 
             with open(infographic_file_path, "x", encoding="utf-8") as file:
-                content: str = "import streamlit as st\n"
+                content: str = "import streamlit as st\n" # decouple this segment
                 content += "from pathlib import Path\n"
                 content += self.composer.get_infographic_python_code(state, runtime)
                 content += "\nst.plotly_chart(fig, on_select='ignore')\n"
