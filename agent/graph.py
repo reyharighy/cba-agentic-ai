@@ -16,9 +16,6 @@ from e2b_code_interpreter import Execution
 from e2b_code_interpreter.code_interpreter_sync import (
     Sandbox,
 )
-from langchain_core.language_models.chat_models import (
-    BaseChatModel,
-)
 from langchain_core.messages import (
     AIMessage,
     SystemMessage,
@@ -35,9 +32,13 @@ from langgraph.runtime import Runtime
 from langgraph.types import Command
 
 # internal
-from agent import Composer, State, Context
+from .composer import Composer
+from .state import State
+from .runtime import Context
 from context import ContextManager
+from context.database import external_db_url
 from context.datasets import dataset_file_path
+from language_model.provider import groq_gpt_120b_high
 from language_model.schema import (
     IntentComprehension,
     RequestClassification,
@@ -52,20 +53,19 @@ from language_model.schema import (
     InfographicPlanObservation,
 )
 from memory import MemoryManager
-from memory.infographic import (
-    infographic_dir_path,
-)
+from memory.database import internal_db_url
+from memory.infographic import infographic_dir_path
 
 
 class Graph:
-    def __init__(
-        self, context_manager: ContextManager, memory_manager: MemoryManager, language_model: BaseChatModel
-    ) -> None:
+    def __init__(self) -> None:
         """
         Initialize the Graph class.
         """
         self.composer: Composer = Composer(
-            context_manager=context_manager, memory_manager=memory_manager, language_model=language_model
+            context_manager=ContextManager(external_db_url),
+            memory_manager=MemoryManager(internal_db_url),
+            language_model=groq_gpt_120b_high,
         )
 
         self.graph_builder: StateGraph[State, Context, State, State] = StateGraph(
@@ -357,41 +357,33 @@ class Graph:
         """
         Node to handle data retrieval plan execution.
         """
-        if state["data_retrieval_plan"]:
-            if state["data_retrieval_plan"].sql_query:
-                if error := self.composer.validate_sql_query(state):
-                    return Command(
-                        goto="data_retrieval_plan",
-                        update={
-                            "ui_payload": "Refining retrieval strategy...",
-                            "current_node": "data_retrieval_plan",
-                            "data_retrieval_plan_execution": error,
-                        },
-                    )
-
-                if error := self.composer.extract_external_database(state):
-                    return Command(
-                        goto="data_retrieval_plan",
-                        update={
-                            "ui_payload": "Refining retrieval strategy...",
-                            "current_node": "data_retrieval_plan",
-                            "data_retrieval_plan_execution": error,
-                        },
-                    )
-
-                return Command(
-                    goto="data_retrieval_plan_observation",
-                    update={
-                        "ui_payload": "Auditing data integrity...",
-                        "current_node": "data_retrieval_plan_observation",
-                    },
-                )
-
-            raise ValueError("'data_retrieval_plan' state does not contain 'sql_query' attribute when retrieving data")
-        else:
-            raise ValueError(
-                f"'data_retrieval_plan' state must not be empty in '{sys._getframe(0).f_code.co_name}' node"
+        if error := self.composer.validate_sql_query(state):
+            return Command(
+                goto="data_retrieval_plan",
+                update={
+                    "ui_payload": "Refining retrieval strategy...",
+                    "current_node": "data_retrieval_plan",
+                    "data_retrieval_plan_execution": error,
+                },
             )
+
+        if error := self.composer.extract_external_database(state):
+            return Command(
+                goto="data_retrieval_plan",
+                update={
+                    "ui_payload": "Refining retrieval strategy...",
+                    "current_node": "data_retrieval_plan",
+                    "data_retrieval_plan_execution": error,
+                },
+            )
+
+        return Command(
+            goto="data_retrieval_plan_observation",
+            update={
+                "ui_payload": "Auditing data integrity...",
+                "current_node": "data_retrieval_plan_observation",
+            },
+        )
 
     def __data_retrieval_plan_observation(
         self, state: State, runtime: Runtime[Context]

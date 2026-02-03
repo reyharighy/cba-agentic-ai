@@ -3,7 +3,6 @@
 # pyright: reportUnknownMemberType=false
 
 # standard
-import sys
 from typing import (
     Any,
     cast,
@@ -50,12 +49,12 @@ from language_model.schema.structured_output import (
     InfographicPlan,
     InfographicPlanObservation,
     InfographicRequirement,
-    IntentComprehension,
     RequestClassification,
 )
 
 # internal
-from agent import State, Context
+from .state import State
+from .runtime import Context
 from context import ContextManager
 from context.datasets import dataset_file_path, unlink_dataset_file
 from memory import MemoryManager
@@ -118,18 +117,22 @@ class Composer:
 
         llm_input: list[AnyMessage] = [system_message]
 
-        if state["context_distillation"]:
+        if state["context_distillation"] and not (
+            cast(str, state["current_node"]).endswith("_response")
+            or cast(str, state["current_node"]).endswith("_result")
+        ):
             llm_input.extend([HumanMessage(state["context_distillation"].content)])
         else:
-            for turn_num in cast(IntentComprehension, state["intent_comprehension"]).relevant_turns:
-                params: ChatHistoryShow = ChatHistoryShow(turn_num=int(turn_num))
+            if state["intent_comprehension"]:
+                for turn_num in state["intent_comprehension"].relevant_turns:
+                    params: ChatHistoryShow = ChatHistoryShow(turn_num=int(turn_num))
 
-                for chat in self.memory_manager.show_chat_history(params):
-                    llm_input.extend(
-                        [HumanMessage(content=chat.content)]
-                        if chat.role == "human"
-                        else [AIMessage(content=chat.content)]
-                    )
+                    for chat in self.memory_manager.show_chat_history(params):
+                        llm_input.extend(
+                            [HumanMessage(content=chat.content)]
+                            if chat.role == "human"
+                            else [AIMessage(content=chat.content)]
+                        )
 
             llm_input.extend(state["messages"])
 
@@ -380,27 +383,23 @@ class Composer:
         Validate the SQL query against the provided database schema.
         """
         try:
-            if state["data_retrieval_plan"]:
-                tree: Expression = sqlglot.parse_one(state["data_retrieval_plan"].sql_query)
+            tree: Expression = sqlglot.parse_one(cast(DataRetrievalPlan, state["data_retrieval_plan"]).sql_query)
 
-                if forbidden := tree.find(exp.Delete, exp.Update, exp.Insert, exp.Drop):
-                    return ValueError(f"Forbidden SQL operation: {str(forbidden).split()[0]}")
+            if forbidden := tree.find(exp.Delete, exp.Update, exp.Insert, exp.Drop):
+                return ValueError(f"Forbidden SQL operation: {str(forbidden).split()[0]}")
 
-                tables: list[str] = [table.name for table in tree.find_all(exp.Table)]
-                columns: list[str] = [column.name for column in tree.find_all(exp.Column)]
-                schema: dict[str, list[dict[str, Any]]] = self.context_manager.inspect_external_database()
+            tables: list[str] = [table.name for table in tree.find_all(exp.Table)]
+            columns: list[str] = [column.name for column in tree.find_all(exp.Column)]
+            schema: dict[str, list[dict[str, Any]]] = self.context_manager.inspect_external_database()
 
-                for table in tables:
-                    if table not in schema.keys():
-                        return ValueError(f"Unknown table: {table}")
+            for table in tables:
+                if table not in schema.keys():
+                    return ValueError(f"Unknown table: {table}")
 
-                for column in columns:
-                    if column not in [col["name"] for col_list in schema.values() for col in col_list]:
-                        return ValueError(f"Unknown column: {column}")
-            else:
-                return ValueError(
-                    f"'data_retrieval_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node"
-                )
+            for column in columns:
+                if column not in [col["name"] for col_list in schema.values() for col in col_list]:
+                    return ValueError(f"Unknown column: {column}")
+
         except ParseError as e:
             return ValueError(f"Invalid SQL Syntax: {e}")
 
@@ -408,10 +407,9 @@ class Composer:
         """
         Extract data from external database based on the provided SQL statement and save it to a CSV file.
         """
-        if state["data_retrieval_plan"]:
-            self.context_manager.extract_external_database(state["data_retrieval_plan"].sql_query)
-
-        raise ValueError(f"'data_retrieval_plan' state must not be empty in '{sys._getframe(1).f_code.co_name}' node")
+        return self.context_manager.extract_external_database(
+            cast(DataRetrievalPlan, state["data_retrieval_plan"]).sql_query
+        )
 
     def prepare_sandbox_environment(self) -> Sandbox:
         """
