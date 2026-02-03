@@ -3,79 +3,42 @@
 
 # standard
 from collections.abc import Iterator
-from typing_extensions import Literal
+from contextlib import asynccontextmanager
 
 # third
 import json
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import HumanMessage
 
 # internal
 from agent.graph import Graph
 from agent.runtime import Context
-from agent.state import State
+from agent.state import State, make_initial_state
 from api.schemas import AgentRequest
+from context import load_analytical_sandbox_bootstrap, load_infographic_sandbox_bootstrap
 from context.system_prompts import prompt_dict
+from memory import MemoryManager
+from memory.database import internal_db_url
+from memory.models.chat_history import ChatHistory
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.graph = Graph().build_graph()
+    app.state.prompts_set = prompt_dict
+    app.state.analytical_sandbox_bootstrap = load_analytical_sandbox_bootstrap()
+    app.state.infographic_sandbox_bootstrap = load_infographic_sandbox_bootstrap()
+    app.state.memory_manager = MemoryManager(internal_db_url)
+
+    yield
 
 
 app = FastAPI(
     title="Conversational Business Analytics - Agentic AI API",
     version="0.1.0",
+    lifespan=lifespan,
 )
-
-
-def load_analytical_sandbox_bootstrap() -> dict[Literal["descriptive", "diagnostic", "predictive", "inferential"], str]:
-    """
-    Loads the analytical sandbox bootstrap code snippets.
-    """
-    ignore_warnings: str = "import warnings\n"
-    ignore_warnings += "warnings.filterwarnings('ignore')\n"
-    pandas: str = "import pandas as pd\n"
-    numpy: str = "import numpy as np\n"
-    scipy: str = "import scipy\n"
-    sklearn: str = "import sklearn\n"
-    df_load: str = "df = pd.read_csv('dataset.csv')\n"
-    df_load += "\n" + "for column in df.columns:"
-    df_load += "\n\t" + "if pd.api.types.is_object_dtype(df[column]):"
-    df_load += "\n\t\t" + "try:"
-    df_load += "\n\t\t\t" + "df[column] = pd.to_datetime(df[column])"
-    df_load += "\n\t\t" + "except Exception as _:"
-    df_load += "\n\t\t\t" + "pass\n"
-
-    descriptive: str = ignore_warnings + pandas + numpy + df_load
-    diagnostic: str = ignore_warnings + pandas + numpy + scipy + df_load
-    predictive: str = ignore_warnings + pandas + numpy + scipy + df_load
-    inferential: str = ignore_warnings + pandas + numpy + sklearn + df_load
-
-    return {
-        "descriptive": descriptive,
-        "diagnostic": diagnostic,
-        "predictive": predictive,
-        "inferential": inferential,
-    }
-
-
-def load_infographic_sandbox_bootstrap() -> str:
-    """
-    Loads the infographic sandbox bootstrap code snippet.
-    """
-    warnings: str = "import warnings\n"
-    pandas: str = "import pandas as pd\n"
-    numpy: str = "import numpy as np\n"
-    graph_objects: str = "import plotly.graph_objects as go\n"
-    express: str = "import plotly.express as px\n\n"
-    ignore_warnings: str = "warnings.filterwarnings('ignore')\n"
-    df_load: str = "df = pd.read_csv('dataset.csv')\n"
-    df_transform: str = "\n" + "for column in df.columns:"
-    df_transform += "\n\t" + "if pd.api.types.is_object_dtype(df[column]):"
-    df_transform += "\n\t\t" + "try:"
-    df_transform += "\n\t\t\t" + "df[column] = pd.to_datetime(df[column])"
-    df_transform += "\n\t\t" + "except Exception as _:"
-    df_transform += "\n\t\t\t" + "pass\n\n"
-
-    return warnings + pandas + numpy + graph_objects + express + ignore_warnings + df_load + df_transform
 
 
 @app.post("/agent/stream")
@@ -83,36 +46,16 @@ def run_agent(request: AgentRequest):
     """
     Endpoint to run the agent and stream responses.
     """
-    graph = Graph().build_graph()
-
-    graph_input: State = State(
-        messages=[HumanMessage(content=request.input)],
-        ui_payload=None,
-        current_node=None,
-        intent_comprehension=None,
-        request_classification=None,
-        analytical_requirement=None,
-        context_distillation=None,
-        data_availability=None,
-        data_retrieval_plan=None,
-        data_retrieval_plan_execution=None,
-        data_retrieval_plan_observation=None,
-        analytical_plan=None,
-        analytical_plan_execution=None,
-        analytical_plan_observation=None,
-        analytical_result=None,
-        infographic_requirement=None,
-        infographic_plan=None,
-        infographic_plan_execution=None,
-        infographic_plan_observation=None,
-        summarization=None,
-    )
+    graph = app.state.graph
+    graph_input: State = make_initial_state(user_input=request.input)
+    chat_history: list[ChatHistory] = app.state.memory_manager.index_chat_history()
+    turn_num: int = max(chat.turn_num for chat in chat_history) if chat_history else 0
 
     graph_context: Context = Context(
-        turn_num=request.turn_num,
-        prompts_set=prompt_dict,
-        analytical_sandbox_bootstrap=load_analytical_sandbox_bootstrap(),
-        infographic_sandbox_bootstrap=load_infographic_sandbox_bootstrap(),
+        turn_num=turn_num + 1,
+        prompts_set=app.state.prompts_set,
+        analytical_sandbox_bootstrap=app.state.analytical_sandbox_bootstrap,
+        infographic_sandbox_bootstrap=app.state.infographic_sandbox_bootstrap,
     )
 
     def event_generator() -> Iterator[str]:
@@ -123,10 +66,10 @@ def run_agent(request: AgentRequest):
                 stream_mode="updates",
                 config={"recursion_limit": 100},
             ):
-                safe_event = jsonable_encoder(event)
-                yield json.dumps(safe_event) + "\n\n"
+                yield "\n" + json.dumps(jsonable_encoder(event)) + "\n"
+
         except Exception as e:
-            yield json.dumps({"error": str(e)}) + "\n\n"
+            yield "\n" + json.dumps({"error": str(e)}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

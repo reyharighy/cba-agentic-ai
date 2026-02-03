@@ -178,10 +178,22 @@ This project uses environment variables for configuration.
 docker compose up --build
 ```
 
-Once running, the agent API will be available at:
+Once running, the agent API will be available to test with Swagger docs:
 
 ```sh
-http://localhost:8000
+http://localhost:8000/docs#/
+```
+
+You can try using cURL to test the agent stream endpoint.
+
+```sh
+curl -X 'POST' \
+  'http://localhost:8000/agent/stream' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "input": "What is the best-selling product in March 2024?"
+}'
 ```
 
 Health check endpoint:
