@@ -16,7 +16,6 @@ from memory.models import (
     ShortMemoryShow,
     chat_histories,
     short_memories,
-    table_schema_metadata,
 )
 
 
@@ -26,15 +25,6 @@ class MemoryManager:
         Initialize MemoryManager
         """
         self.internal: Engine = create_engine(internal_db_url)
-
-    def init_internal_database(self) -> None:
-        """
-        Initialize internal database.
-        """
-        table_schema_metadata.create_all(
-            bind=self.internal,
-            checkfirst=True,
-        )
 
     def index_chat_history(self) -> list[ChatHistory]:
         """

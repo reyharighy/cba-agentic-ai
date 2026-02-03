@@ -3,7 +3,6 @@
 
 # standard
 from collections.abc import Iterator
-from contextlib import asynccontextmanager
 from typing_extensions import Literal
 
 # third
@@ -19,24 +18,11 @@ from agent.runtime import Context
 from agent.state import State
 from api.schemas import AgentRequest
 from context.system_prompts import prompt_dict
-from memory.database import internal_db_url
-from memory.manager import MemoryManager
-from docker_script.external_database_factory import main as seed_external_database
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    memory_manager = MemoryManager(internal_db_url)
-    memory_manager.init_internal_database()
-    seed_external_database()
-
-    yield
 
 
 app = FastAPI(
     title="Conversational Business Analytics - Agentic AI API",
     version="0.1.0",
-    lifespan=lifespan,
 )
 
 

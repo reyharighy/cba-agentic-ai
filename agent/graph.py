@@ -715,7 +715,7 @@ class Graph:
 
         if state["infographic_plan"]:
             infographic_file_path: Path = Path(
-                infographic_dir_path / f"turn_num_{runtime.context.turn_num + 1}" / "infographic.py"
+                infographic_dir_path / f"turn_num_{runtime.context.turn_num}" / "infographic.py"
             )
 
             if not infographic_file_path.parent.exists():
@@ -818,7 +818,7 @@ class Graph:
         self.composer.save_current_interaction(
             state=state,
             llm_output=llm_output,
-            turn_num=runtime.context.turn_num + 1,
+            turn_num=runtime.context.turn_num,
         )
 
         return {
