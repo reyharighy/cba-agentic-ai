@@ -42,7 +42,7 @@ app = FastAPI(
 
 
 @app.post("/agent/stream")
-def run_agent(request: AgentRequest):
+def run_agent(request: AgentRequest) -> StreamingResponse:
     """
     Endpoint to run the agent and stream responses.
     """
@@ -66,13 +66,31 @@ def run_agent(request: AgentRequest):
                 stream_mode="updates",
                 config={"recursion_limit": 100},
             ):
-                yield "\n" + json.dumps(jsonable_encoder(event)) + "\n"
+                payload: str = json.dumps(jsonable_encoder({
+                    "type": "update",
+                    "data": event,
+                }))
+
+                yield f"data: {payload}\n\n"
+
+            yield "data: {\"type\": \"complete\"}\n\n"
 
         except Exception as e:
-            yield "\n" + json.dumps({"error": str(e)}) + "\n"
+            payload: str = json.dumps({
+                "type": "error",
+                "message": str(e),
+            })
+
+            yield f"data: {payload}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+@app.get("/chat/history")
+def get_chat_history() -> list[ChatHistory]:
+    """
+    Endpoint to retrieve chat history.
+    """
+    return app.state.memory_manager.index_chat_history()
 
 @app.get("/health")
 def health_check():
