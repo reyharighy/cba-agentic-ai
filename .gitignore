@@ -25,3 +25,6 @@ memory/infographic/turn_num_*/
 
 # Cursor files
 .cursor/
+
+# Documentation files
+docs/
