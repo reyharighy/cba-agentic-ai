@@ -86,7 +86,7 @@ def run_agent(request: AgentRequest) -> StreamingResponse:
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/chat/history")
-def get_chat_history() -> list[ChatHistory]:
+async def get_chat_history() -> list[ChatHistory]:
     """
     Endpoint to retrieve chat history.
     """
