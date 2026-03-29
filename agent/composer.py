@@ -249,7 +249,7 @@ class Composer:
         Retrieve feedback for data retrieval plan execution errors.
         """
         context_prompt: str = "\n\nFeedback on the data retrieval execution from external database: "
-        context_prompt += cast(Execution, state["data_retrieval_plan_execution"]).logs.stdout[0]
+        context_prompt += str(state["data_retrieval_plan_execution"])
 
         return context_prompt
 
