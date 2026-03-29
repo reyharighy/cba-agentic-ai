@@ -10,7 +10,7 @@ from pydantic import (
 
 class ShortMemory(BaseModel):
     """
-    Docstring for ShortMemory
+    Schema for short-term memory summary.
     """
 
     turn_num: int = Field(ge=1)
@@ -24,11 +24,7 @@ class ShortMemoryCreate(BaseModel):
 
     def __call__(self) -> ShortMemory:
         """
-        Docstring for __call__
-
-        :param self: Description
-        :return: Description
-        :rtype: ShortMemory
+        Convert ShortMemoryCreate to ShortMemory.
         """
         return ShortMemory(
             turn_num=self.turn_num,
@@ -38,7 +34,7 @@ class ShortMemoryCreate(BaseModel):
 
 class ShortMemoryShow(BaseModel):
     """
-    Docstring for ShortMemoryShow
+    Schema for showing short-term memory summary.
     """
 
     turn_num: int

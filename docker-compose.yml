@@ -1,14 +1,14 @@
 services:
-  streamlit:
+  agent-api:
     build:
       context: .
       args:
-        STREAMLIT_PORT: ${STREAMLIT_PORT}
         WORKDIR_PATH: ${WORKDIR_PATH}
+        AGENT_API_PORT: ${AGENT_API_PORT}
     env_file:
       - .env
     ports:
-      - "${STREAMLIT_PORT}:${STREAMLIT_PORT}"
+      - "${AGENT_API_PORT}:${AGENT_API_PORT}"
     volumes:
       - './:${WORKDIR_PATH}'
     networks:

@@ -24,20 +24,14 @@ from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
 
 # internal
-from context.database.config import (
-    external_db_url,
-)
+from context.database import external_db_url
 
 
 def main() -> None:
     """
     Populate the external database with synthetic sales transaction data.
-
-    This function checks an environment variable to determine if seeding is enabled. If enabled, it creates the necessary
-    table schema and inserts data from a CSV file.
     """
     if os.getenv("ENABLE_EXTERNAL_DB_SEEDING", "true").lower() != "true":
-        print("External database seeding is disabled.")
         return
 
     engine: Engine = create_engine(external_db_url)
@@ -137,8 +131,6 @@ def main() -> None:
 
     with engine.begin() as connection:
         connection.execute(insert(table), records)
-
-    print("External database is successfully populated with synthetic data.")
 
 
 if __name__ == "__main__":

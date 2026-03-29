@@ -12,7 +12,7 @@ from .short_memory import (
 from .tables import (
     chat_histories,
     short_memories,
-    table_schema_metadata,
+    metadata,
 )
 
 __all__ = [
@@ -24,5 +24,5 @@ __all__ = [
     "ShortMemoryShow",
     "chat_histories",
     "short_memories",
-    "table_schema_metadata",
+    "metadata",
 ]

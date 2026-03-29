@@ -16,39 +16,19 @@ from memory.models import (
     ShortMemoryShow,
     chat_histories,
     short_memories,
-    table_schema_metadata,
 )
 
 
 class MemoryManager:
     def __init__(self, internal_db_url: str) -> None:
         """
-        Docstring for __init__
-
-        :param self: Description
-        :param internal_db_url: Description
-        :type internal_db_url: str
+        Initialize MemoryManager
         """
         self.internal: Engine = create_engine(internal_db_url)
 
-    def init_internal_database(self) -> None:
-        """
-        Docstring for init_internal_database
-
-        :param self: Description
-        """
-        table_schema_metadata.create_all(
-            bind=self.internal,
-            checkfirst=True,
-        )
-
     def index_chat_history(self) -> list[ChatHistory]:
         """
-        Docstring for index_chat_history
-
-        :param self: Description
-        :return: Description
-        :rtype: list[ChatHistory]
+        Get all chat history records.
         """
         with self.internal.begin() as connection:
             result: CursorResult[Row[Any]] = connection.execute(
@@ -62,24 +42,14 @@ class MemoryManager:
 
     def store_chat_history(self, params: ChatHistory) -> None:
         """
-        Docstring for store_chat_history
-
-        :param self: Description
-        :param params: Description
-        :type params: ChatHistory
+        Store a chat history record.
         """
         with self.internal.begin() as connection:
             connection.execute(chat_histories.insert().values(**params.model_dump()))
 
     def show_chat_history(self, params: ChatHistoryShow) -> list[ChatHistory]:
         """
-        Docstring for show_chat_history
-
-        :param self: Description
-        :param params: Description
-        :type params: ChatHistoryShow
-        :return: Description
-        :rtype: list[ChatHistory]
+        Show chat history for a specific turn number.
         """
         with self.internal.begin() as connection:
             result: CursorResult[Row[Any]] = connection.execute(
@@ -92,11 +62,7 @@ class MemoryManager:
 
     def index_short_memory(self) -> list[ShortMemory]:
         """
-        Docstring for index_short_memory
-
-        :param self: Description
-        :return: Description
-        :rtype: list[ShortMemory]
+        Get all short memory records.
         """
         with self.internal.begin() as connection:
             result: CursorResult[Row[Any]] = connection.execute(
@@ -110,24 +76,14 @@ class MemoryManager:
 
     def store_short_memory(self, params: ShortMemory) -> None:
         """
-        Docstring for store_short_memory
-
-        :param self: Description
-        :param params: Description
-        :type params: ShortMemory
+        Store a short memory record.
         """
         with self.internal.begin() as connection:
             connection.execute(short_memories.insert().values(**params.model_dump()))
 
     def show_short_memory(self, params: ShortMemoryShow) -> ShortMemory | None:
         """
-        Docstring for show_short_memory
-
-        :param self: Description
-        :param params: Description
-        :type params: ShortMemoryShow
-        :return: Description
-        :rtype: ShortMemory | None
+        Show the most recent short memory for a specific turn number.
         """
         with self.internal.begin() as connection:
             result: CursorResult[Row[Any]] = connection.execute(

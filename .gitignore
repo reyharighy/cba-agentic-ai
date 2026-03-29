@@ -22,3 +22,9 @@ memory/infographic/turn_num_*/
 # development artifacts
 .ruff_cache/
 .vscode/
+
+# Cursor files
+.cursor/
+
+# Documentation files
+docs/

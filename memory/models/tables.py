@@ -11,11 +11,11 @@ from sqlalchemy import (
     Table,
 )
 
-table_schema_metadata = MetaData()
+metadata = MetaData()
 
 chat_histories = Table(
     "chat_histories",
-    table_schema_metadata,
+    metadata,
     Column("turn_num", Integer, nullable=False),
     Column("role", String, nullable=False),
     Column("content", String, nullable=False),
@@ -29,7 +29,7 @@ chat_histories = Table(
 
 short_memories = Table(
     "short_memories",
-    table_schema_metadata,
+    metadata,
     Column("turn_num", Integer, nullable=False),
     Column("summary", String, nullable=False),
     Column(

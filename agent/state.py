@@ -2,7 +2,7 @@
 
 # third-party
 from e2b_code_interpreter import Execution
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import MessagesState
 
 # internal
@@ -21,15 +21,41 @@ from language_model.schema import (
 )
 
 
+def make_initial_state(user_input: str) -> "State":
+    """
+    Create an initial State object with the user's input.
+    """
+    return State(
+        messages=[HumanMessage(content=user_input)],
+        ui_payload=None,
+        current_node=None,
+        intent_comprehension=None,
+        request_classification=None,
+        analytical_requirement=None,
+        context_distillation=None,
+        data_availability=None,
+        data_retrieval_plan=None,
+        data_retrieval_plan_execution=None,
+        data_retrieval_plan_observation=None,
+        analytical_plan=None,
+        analytical_plan_execution=None,
+        analytical_plan_observation=None,
+        analytical_result=None,
+        infographic_requirement=None,
+        infographic_plan=None,
+        infographic_plan_execution=None,
+        infographic_plan_observation=None,
+        summarization=None,
+    )
+
+
 class State(MessagesState):
     """
-    State class for managing the graph state during the transition of nodes.
-
-    This class extends MessagesState to include specific attributes relevant to the analytical and infographic generation process.
+    State object for the agent.
     """
 
     ui_payload: dict[str, str] | None
-    next_node: str | None
+    current_node: str | None
     intent_comprehension: IntentComprehension | None
     request_classification: RequestClassification | None
     analytical_requirement: AnalyticalRequirement | None
