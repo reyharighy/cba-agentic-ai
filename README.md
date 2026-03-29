@@ -13,12 +13,14 @@
 <img src="https://img.shields.io/badge/Python-3776AB.svg?style=flat&logo=Python&logoColor=white">
 <img src="https://img.shields.io/badge/LangGraph-4B5563.svg?style=flat">
 <img src="https://img.shields.io/badge/FastAPI-009688.svg?style=flat&logo=FastAPI&logoColor=white">
+<img src="https://img.shields.io/badge/Groq-F55036.svg?style=flat&logo=Groq&logoColor=white">
 
 <br>
 
 <img src="https://img.shields.io/badge/Docker-2496ED.svg?style=flat&logo=Docker&logoColor=white">
 <img src="https://img.shields.io/badge/PostgreSQL-4169E1.svg?style=flat&logo=PostgreSQL&logoColor=white">
 <img src="https://img.shields.io/badge/SQLAlchemy-D71F00.svg?style=flat&logo=SQLAlchemy&logoColor=white">
+<img src="https://img.shields.io/badge/E2B-000000.svg?style=flat&logo=E2B&logoColor=white">
 
 </div>
 
@@ -44,16 +46,14 @@ This project is a **research and learning platform** for agentic analytics — n
 
 ## Project Status
 
-⚠️ **Active Development – Architectural Refactor in Progress**
+⚠️ **Active Development**
 
-This branch represents an ongoing transition to a **cleanly separated architecture**, with emphasis on:
+This branch provides a **cleanly separated architecture**, with emphasis on:
 
 - isolating the agent core from presentation concerns,
 - serving agent capabilities via a stable HTTP API,
 - improving observability and debuggability of agent workflows,
 - and enabling multiple UI clients without coupling.
-
-Breaking changes are expected while the service boundary stabilizes.
 
 ---
 
@@ -116,7 +116,7 @@ This improves system robustness.
 ├── context/            # Runtime context shared across agent nodes
 ├── docker_script/      # Database initialization & synthetic data seeding
 ├── language_model/     # LLM abstraction layer
-└── memory              # Conversational and short-term memory persistence
+└── memory/             # Conversational and short-term memory persistence
 ```
 
 ## Features
@@ -127,7 +127,7 @@ This improves system robustness.
 
 - 📊 **Business Analytics Focus**  
 
-  Designed for descriptive and diagnostic analysis (with room to grow).
+  Supports descriptive, diagnostic, predictive, and inferential analysis.
 
 - 🧾 **Structured LLM Outputs**
 
@@ -140,6 +140,10 @@ This improves system robustness.
 - 🐳 **Containerized Agent Service**
 
   FastAPI-based backend, UI-agnostic
+
+- 🔒 **Sandboxed Code Execution**
+
+  Analytical Python code runs in isolated E2B sandbox environments, separated from the OLTP data source.
 
 - 🗃️ **External PostgreSQL Integration**
 - 🧪 **Synthetic Data Seeding for Development**
