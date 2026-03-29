@@ -1,6 +1,8 @@
 # pyright: reportPrivateUsage=false
 # pyright: reportMissingTypeStubs=false
 # pyright: reportUnknownMemberType=false
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
 
 # standard
 from typing import (
@@ -195,7 +197,7 @@ class Composer:
         Retrieve the data retrieval plan including SQL query and rationale.
         """
         context_prompt: str = "\n\nData retrieval plan that was generated to answer current request: "
-        context_prompt: str = str(cast(DataRetrievalPlan, state["data_retrieval_plan"]))
+        context_prompt += str(cast(DataRetrievalPlan, state["data_retrieval_plan"]))
 
         return context_prompt
 
