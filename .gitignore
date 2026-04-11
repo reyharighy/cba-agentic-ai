@@ -26,5 +26,5 @@ memory/infographic/turn_num_*/
 # Cursor files
 .cursor/
 
-# Documentation files
-docs/
+# Local documentation only (thesis draft, notes); not committed
+.docs/
