@@ -37,6 +37,8 @@ def make_initial_state(user_input: str) -> "State":
         data_retrieval_plan=None,
         data_retrieval_plan_execution=None,
         data_retrieval_plan_observation=None,
+        data_retrieval_retry_count=0,
+        data_retrieval_failure_history=[],
         analytical_plan=None,
         analytical_plan_execution=None,
         analytical_plan_observation=None,
@@ -64,6 +66,8 @@ class State(MessagesState):
     data_retrieval_plan: DataRetrievalPlan | None
     data_retrieval_plan_execution: ValueError | None
     data_retrieval_plan_observation: DataRetrievalPlanObservation | None
+    data_retrieval_retry_count: int
+    data_retrieval_failure_history: list[str]
     analytical_plan: AnalyticalPlan | None
     analytical_plan_execution: Execution | None
     analytical_plan_observation: AnalyticalPlanObservation | None

@@ -8,3 +8,12 @@ class AgentRequest(BaseModel):
     """
 
     input: str
+
+
+class ResumeRequest(BaseModel):
+    """
+    Schema for resuming an interrupted agent run.
+    """
+
+    thread_id: str
+    input: str
