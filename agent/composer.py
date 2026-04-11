@@ -66,6 +66,57 @@ from memory.models import (
     ShortMemoryCreate,
 )
 
+_SQL_VALIDATION_DIALECT: str = "postgres"
+
+_NON_READ_SQL_EXPRESSIONS: tuple[type[Expression], ...] = (
+    exp.Delete,
+    exp.Update,
+    exp.Insert,
+    exp.Create,
+    exp.Alter,
+    exp.Drop,
+    exp.TruncateTable,
+    exp.Merge,
+    exp.Copy,
+    exp.Command,
+    exp.Analyze,
+    exp.Grant,
+    exp.Revoke,
+    exp.Set,
+    exp.Transaction,
+    exp.Commit,
+    exp.Rollback,
+)
+
+def _unwrap_query_root(expression: Expression) -> Expression:
+    current: Expression = expression
+
+    while isinstance(current, (exp.Subquery, exp.Paren)):
+        current = current.this
+
+    return current
+
+def _read_only_root_violation(tree: Expression) -> str | None:
+    root: Expression = _unwrap_query_root(tree)
+
+    if isinstance(root, (exp.Select, exp.Union)):
+        return None
+
+    return f"only read-only SELECT queries are allowed (got {type(root).__name__})"
+
+def _non_read_ast_violation(tree: Expression) -> str | None:
+    if forbidden := tree.find(*_NON_READ_SQL_EXPRESSIONS):
+        return f"forbidden non read-only SQL ({type(forbidden).__name__})"
+
+    return None
+
+def _select_into_violation(tree: Expression) -> str | None:
+    for select in tree.find_all(exp.Select):
+        if select.args.get("into"):
+            return "SELECT ... INTO is not allowed (creates a database object)"
+
+    return None
+
 
 class Composer:
     def __init__(
@@ -394,10 +445,25 @@ class Composer:
         Validate the SQL query against the provided database schema.
         """
         try:
-            tree: Expression = sqlglot.parse_one(cast(DataRetrievalPlan, state["data_retrieval_plan"]).sql_query)
+            sql_query: str = cast(DataRetrievalPlan, state["data_retrieval_plan"]).sql_query.strip()
 
-            if forbidden := tree.find(exp.Delete, exp.Update, exp.Insert, exp.Drop):
-                return ValueError(f"Forbidden SQL operation: {str(forbidden).split()[0]}")
+            if not sql_query:
+                return ValueError("SQL query is empty")
+
+            parsed: list[Expression | None] = sqlglot.parse(sql_query, dialect=_SQL_VALIDATION_DIALECT)
+            statements: list[Expression] = [s for s in parsed if s is not None]
+
+            if len(statements) != 1:
+                return ValueError("Exactly one SQL statement is required (multiple statements are not allowed)")
+
+            tree: Expression = statements[0]
+
+            if msg := _read_only_root_violation(tree):
+                return ValueError(msg)
+            if msg := _non_read_ast_violation(tree):
+                return ValueError(msg)
+            if msg := _select_into_violation(tree):
+                return ValueError(msg)
 
             tables: list[str] = [table.name for table in tree.find_all(exp.Table)]
             columns: list[str] = [column.name for column in tree.find_all(exp.Column)]
