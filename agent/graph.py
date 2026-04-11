@@ -18,8 +18,10 @@ from e2b_code_interpreter.code_interpreter_sync import (
 )
 from langchain_core.messages import (
     AIMessage,
+    HumanMessage,
     SystemMessage,
 )
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import (
     StateGraph,
     END,
@@ -29,7 +31,7 @@ from langgraph.graph.state import (
     CompiledStateGraph,
 )
 from langgraph.runtime import Runtime
-from langgraph.types import Command
+from langgraph.types import Command, interrupt
 
 # internal
 from .composer import Composer
@@ -56,6 +58,7 @@ from memory import MemoryManager
 from memory.database import internal_db_url
 from memory.infographic import infographic_dir_path
 
+MAX_CORRECTION_RETRIES: int = 3
 
 class Graph:
     def __init__(self) -> None:
@@ -248,9 +251,39 @@ class Graph:
     ]:
         """
         Node to handle data availability.
+
+        On first visit (from analytical_requirement), the LLM evaluates
+        whether the database schema can satisfy the request.
+
+        On retry-exhausted re-visit (from data_retrieval_plan), the node
+        pauses via interrupt() to request additional context from the user
+        before re-evaluating.
         """
+        additional_context: str | None = None
+
+        if state["data_retrieval_retry_count"] >= MAX_CORRECTION_RETRIES:
+            system_prompt = runtime.context.prompts_set[
+                sys._getframe(0).f_code.co_name + "_from_data_retrieval_plan"
+            ]
+
+            context_prompt = self.composer.get_data_retrieval_failure_summary(state)
+            system_message = SystemMessage(system_prompt + context_prompt)
+
+            llm, llm_input = self.composer.get_runnable_with_input(
+                system_message=system_message,
+                state=state,
+            )
+
+            summary_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
+            interrupt_message: str = summary_output.content if isinstance(summary_output.content, str) else ""
+            additional_context = interrupt(interrupt_message)
+
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = self.composer.get_database_schema_info()
+
+        if additional_context:
+            context_prompt += f"\n\nAdditional context provided by the user after failed retrieval attempts: {additional_context}"
+
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
         llm, llm_input = self.composer.get_runnable_with_input(
@@ -263,13 +296,20 @@ class Graph:
         serialized_output: DataAvailability = DataAvailability.model_validate(llm_output)
 
         if serialized_output.data_is_available:
+            update: dict[str, Any] = {
+                "ui_payload": "Structuring data fetch...",
+                "current_node": "data_retrieval_plan",
+                "data_availability": serialized_output,
+            }
+
+            if additional_context:
+                update["messages"] = [HumanMessage(content=additional_context)]
+                update["data_retrieval_retry_count"] = 0
+                update["data_retrieval_failure_history"] = []
+
             return Command(
                 goto="data_retrieval_plan",
-                update={
-                    "ui_payload": "Structuring data fetch...",
-                    "current_node": "data_retrieval_plan",
-                    "data_availability": serialized_output,
-                },
+                update=update
             )
 
         return Command(
@@ -302,10 +342,26 @@ class Graph:
             "messages": [llm_output],
         }
 
-    def __data_retrieval_plan(self, state: State, runtime: Runtime[Context]) -> dict[str, Any]:
+    def __data_retrieval_plan(
+        self, state: State, runtime: Runtime[Context]
+    ) -> Command[
+        Literal[
+            "data_retrieval_plan_execution",
+            "data_availability",
+        ]
+    ]:
         """
         Node to handle data retrieval plan.
         """
+        if state["data_retrieval_retry_count"] >= MAX_CORRECTION_RETRIES:
+            return Command(
+                goto="data_availability",
+                update={
+                    "ui_payload": "Requesting additional context...",
+                    "current_node": "data_availability",
+                },
+            )
+
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = self.composer.get_database_schema_info()
 
@@ -338,13 +394,16 @@ class Graph:
         llm_output = llm.invoke(llm_input)
         serialized_output: DataRetrievalPlan = DataRetrievalPlan.model_validate(llm_output)
 
-        return {
-            "ui_payload": "Implementing retrieval plan...",
-            "current_node": "data_retrieval_plan_execution",
-            "data_retrieval_plan": serialized_output,
-            "data_retrieval_plan_execution": None,
-            "data_retrieval_plan_observation": None,
-        }
+        return Command(
+            goto="data_retrieval_plan_execution",
+            update={
+                "ui_payload": "Implementing retrieval plan...",
+                "current_node": "data_retrieval_plan_execution",
+                "data_retrieval_plan": serialized_output,
+                "data_retrieval_plan_execution": None,
+                "data_retrieval_plan_observation": None,
+            },
+        )
 
     def __data_retrieval_plan_execution(
         self, state: State
@@ -364,6 +423,11 @@ class Graph:
                     "ui_payload": "Refining retrieval strategy...",
                     "current_node": "data_retrieval_plan",
                     "data_retrieval_plan_execution": error,
+                    "data_retrieval_retry_count": state["data_retrieval_retry_count"] + 1,
+                    "data_retrieval_failure_history": [
+                        *state["data_retrieval_failure_history"],
+                        f"SQL validation error: {error}",
+                    ],
                 },
             )
 
@@ -374,6 +438,11 @@ class Graph:
                     "ui_payload": "Refining retrieval strategy...",
                     "current_node": "data_retrieval_plan",
                     "data_retrieval_plan_execution": error,
+                    "data_retrieval_retry_count": state["data_retrieval_retry_count"] + 1,
+                    "data_retrieval_failure_history": [
+                        *state["data_retrieval_failure_history"],
+                        f"Database extraction error: {error}",
+                    ],
                 },
             )
 
@@ -427,6 +496,11 @@ class Graph:
                 "ui_payload": "Refining retrieval strategy...",
                 "current_node": "data_retrieval_plan",
                 "data_retrieval_plan_observation": serialized_output,
+                "data_retrieval_retry_count": state["data_retrieval_retry_count"] + 1,
+                "data_retrieval_failure_history": [
+                    *state["data_retrieval_failure_history"],
+                    f"Observation deemed insufficient: {serialized_output.rationale}",
+                ],
             },
         )
 
@@ -953,11 +1027,6 @@ class Graph:
         )
 
         self.graph_builder.add_edge(
-            start_key="data_retrieval_plan",
-            end_key="data_retrieval_plan_execution",
-        )
-
-        self.graph_builder.add_edge(
             start_key="analytical_plan",
             end_key="analytical_plan_execution",
         )
@@ -976,4 +1045,4 @@ class Graph:
 
         self.graph_builder.add_edge(start_key="summarization", end_key=END)
 
-        return self.graph_builder.compile()
+        return self.graph_builder.compile(checkpointer=MemorySaver())

@@ -5,7 +5,10 @@ from .context_distillation import CONTEXT_DISTILLATION
 from .punt_response import PUNT_RESPONSE
 from .analytical_requirement import ANALYTICAL_REQUIREMENT
 from .direct_response import DIRECT_RESPONSE
-from .data_availability import DATA_AVAILABILITY
+from .data_availability import (
+    DATA_AVAILABILITY,
+    DATA_AVAILABILITY_FROM_DATA_RETRIEVAL_PLAN,
+)
 from .data_unavailability_response import DATA_UNAVAILABILITY_RESPONSE
 from .data_retrieval_plan import (
     DATA_RETRIEVAL_PLAN,
@@ -37,6 +40,7 @@ prompt_dict: dict[str, str] = {
     "__analytical_requirement": ANALYTICAL_REQUIREMENT,
     "__direct_response": DIRECT_RESPONSE,
     "__data_availability": DATA_AVAILABILITY,
+    "__data_availability_from_data_retrieval_plan": DATA_AVAILABILITY_FROM_DATA_RETRIEVAL_PLAN,
     "__data_unavailability_response": DATA_UNAVAILABILITY_RESPONSE,
     "__data_retrieval_plan": DATA_RETRIEVAL_PLAN,
     "__data_retrieval_plan_from_data_retrieval_plan_execution": DATA_RETRIEVAL_PLAN_FROM_DATA_RETRIEVAL_PLAN_EXECUTION,

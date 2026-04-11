@@ -262,6 +262,15 @@ class Composer:
 
         return context_prompt
 
+    def get_data_retrieval_failure_summary(self, state: State) -> str:
+        """
+        Build a context prompt from the accumulated data retrieval failure history.
+        """
+        failure_history: list[str] = state["data_retrieval_failure_history"]
+        failure_log: str = "\n".join(f"- Attempt {i + 1}: {f}" for i, f in enumerate(failure_history))
+
+        return f"\n\nFailure log:\n{failure_log}"
+
     def get_analytical_python_code(self, state: State, runtime: Runtime[Context]) -> str:
         """
         Retrieve the analytical Python code including bootstrap.
