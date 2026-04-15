@@ -18,7 +18,7 @@ from langgraph.types import Command
 
 # internal
 from agent.graph import Graph
-from agent.runtime import Context
+from agent.runtime import Context, read_enable_infographic_from_env
 from agent.state import State, make_initial_state
 from api.schemas import AgentRequest, ResumeRequest
 from context import load_analytical_sandbox_bootstrap, load_infographic_sandbox_bootstrap
@@ -30,6 +30,7 @@ from memory.models.chat_history import ChatHistory
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.enable_infographic = read_enable_infographic_from_env()
     app.state.graph = Graph().build_graph()
     app.state.prompts_set = prompt_dict
     app.state.analytical_sandbox_bootstrap = load_analytical_sandbox_bootstrap()
@@ -118,6 +119,7 @@ def run_agent(request: AgentRequest) -> StreamingResponse:
         prompts_set=app.state.prompts_set,
         analytical_sandbox_bootstrap=app.state.analytical_sandbox_bootstrap,
         infographic_sandbox_bootstrap=app.state.infographic_sandbox_bootstrap,
+        enable_infographic=app.state.enable_infographic,
     )
 
     thread_id: str = str(uuid.uuid4())
