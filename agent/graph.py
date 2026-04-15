@@ -656,9 +656,16 @@ class Graph:
 
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
+        if runtime.context.enable_infographic:
+            return {
+                "ui_payload": "Identifying visual opportunities...",
+                "current_node": "infographic_requirement",
+                "analytical_result": llm_output,
+            }
+
         return {
-            "ui_payload": "Identifying visual opportunities...",
-            "current_node": "infographic_requirement",
+            "ui_payload": "Wrapping up...",
+            "current_node": "analytical_response",
             "analytical_result": llm_output,
         }
 
@@ -900,6 +907,17 @@ class Graph:
             "summarization": llm_output,
         }
 
+    def _route_after_analytical_result(
+        self, state: State, runtime: Runtime[Context]
+    ) -> Literal["analytical_response", "infographic_requirement"]:
+        """
+        When infographics are disabled, bypass ``infographic_requirement`` so the LLM
+        never assesses whether a chart is needed.
+        """
+        if runtime.context.enable_infographic:
+            return "infographic_requirement"
+        return "analytical_response"
+
     def build_graph(
         self,
     ) -> CompiledStateGraph[State, Context]:
@@ -1031,9 +1049,13 @@ class Graph:
             end_key="analytical_plan_execution",
         )
 
-        self.graph_builder.add_edge(
-            start_key="analytical_result",
-            end_key="infographic_requirement",
+        self.graph_builder.add_conditional_edges(
+            "analytical_result",
+            self._route_after_analytical_result,
+            {
+                "infographic_requirement": "infographic_requirement",
+                "analytical_response": "analytical_response",
+            },
         )
 
         self.graph_builder.add_edge(start_key="analytical_response", end_key="summarization")
