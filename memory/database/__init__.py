@@ -1,26 +1,41 @@
 # standard
 import os
 
-postgres_port: str | None = os.getenv("POSTGRES_PORT", None)
+# third-party
+from dotenv import load_dotenv
 
-if postgres_port is None:
-    raise ValueError("'POSTGRES_PORT' is not found in config file.")
+load_dotenv()
 
-postgres_user: str | None = os.getenv("POSTGRES_USER", None)
+agent_postgres_host: str | None = os.getenv("AGENT_POSTGRES_HOST", None)
 
-if postgres_user is None:
-    raise ValueError("'POSTGRES_USER' is not found in config file.")
+if agent_postgres_host is None:
+    raise ValueError("'AGENT_POSTGRES_HOST' is not found in config file.")
 
-postgres_password: str | None = os.getenv("POSTGRES_PASSWORD", None)
+agent_postgres_port: str | None = os.getenv("AGENT_POSTGRES_PORT", None)
 
-if postgres_password is None:
-    raise ValueError("'POSTGRES_PASSWORD' is not found in config file.")
+if agent_postgres_port is None:
+    raise ValueError("'AGENT_POSTGRES_PORT' is not found in config file.")
 
-postgres_db: str | None = os.getenv("POSTGRES_DB", None)
+agent_postgres_user: str | None = os.getenv("AGENT_POSTGRES_USER", None)
 
-if postgres_db is None:
-    raise ValueError("'POSTGRES_DB' is not found in config file.")
+if agent_postgres_user is None:
+    raise ValueError("'AGENT_POSTGRES_USER' is not found in config file.")
 
-internal_db_url: str = f"postgresql+psycopg2://{postgres_user}:{postgres_password}@pgsql:{postgres_port}/{postgres_db}"
+agent_postgres_password: str | None = os.getenv("AGENT_POSTGRES_PASSWORD", None)
 
-__all__ = ["internal_db_url"]
+if agent_postgres_password is None:
+    raise ValueError("'AGENT_POSTGRES_PASSWORD' is not found in config file.")
+
+agent_postgres_db: str | None = os.getenv("AGENT_POSTGRES_DB", None)
+
+if agent_postgres_db is None:
+    raise ValueError("'AGENT_POSTGRES_DB' is not found in config file.")
+
+internal_db_url: str = (
+    f"postgresql+psycopg2://{agent_postgres_user}:{agent_postgres_password}"
+    f"@{agent_postgres_host}:{agent_postgres_port}/{agent_postgres_db}"
+)
+
+__all__ = [
+    "internal_db_url",
+]
