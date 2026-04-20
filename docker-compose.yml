@@ -14,20 +14,40 @@ services:
     networks:
       - net-system
     depends_on:
-      pgsql:
+      pgsql-business:
         condition: service_healthy
-  pgsql:
+      pgsql-agent:
+        condition: service_healthy
+  pgsql-business:
     image: 'postgres:17'
-    env_file:
-      - .env
+    environment:
+      POSTGRES_USER: ${BUSINESS_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${BUSINESS_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${BUSINESS_POSTGRES_DB}
     ports:
-      - '${POSTGRES_PORT}:5432'
+      - '${BUSINESS_POSTGRES_HOST_PORT}:5432'
     volumes:
-      - 'vol-pgsql:/var/lib/postgresql/data'
+      - 'vol-pgsql-business:/var/lib/postgresql/data'
     networks:
       - net-system
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-d", "${POSTGRES_DB}", "-U", "${POSTGRES_USER}"]
+      test: ["CMD", "pg_isready", "-q", "-d", "${BUSINESS_POSTGRES_DB}", "-U", "${BUSINESS_POSTGRES_USER}"]
+      retries: 3
+      timeout: 5s
+  pgsql-agent:
+    image: 'postgres:17'
+    environment:
+      POSTGRES_USER: ${AGENT_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AGENT_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${AGENT_POSTGRES_DB}
+    ports:
+      - '${AGENT_POSTGRES_HOST_PORT}:5432'
+    volumes:
+      - 'vol-pgsql-agent:/var/lib/postgresql/data'
+    networks:
+      - net-system
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "${AGENT_POSTGRES_DB}", "-U", "${AGENT_POSTGRES_USER}"]
       retries: 3
       timeout: 5s
   pgadmin:
@@ -42,10 +62,14 @@ services:
     networks:
       - net-system
     depends_on:
-      pgsql:
+      pgsql-business:
+        condition: service_healthy
+      pgsql-agent:
         condition: service_healthy
 volumes:
-  vol-pgsql:
+  vol-pgsql-business:
+    driver: local
+  vol-pgsql-agent:
     driver: local
   vol-pgadmin:
     driver: local
