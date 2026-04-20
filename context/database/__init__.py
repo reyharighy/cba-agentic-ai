@@ -6,26 +6,36 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-postgres_port: str | None = os.getenv("POSTGRES_PORT", None)
+business_postgres_host: str | None = os.getenv("BUSINESS_POSTGRES_HOST", None)
 
-if postgres_port is None:
-    raise ValueError("'POSTGRES_PORT' is not found in config file.")
+if business_postgres_host is None:
+    raise ValueError("'BUSINESS_POSTGRES_HOST' is not found in config file.")
 
-postgres_user: str | None = os.getenv("POSTGRES_USER", None)
+business_postgres_port: str | None = os.getenv("BUSINESS_POSTGRES_PORT", None)
 
-if postgres_user is None:
-    raise ValueError("'POSTGRES_USER' is not found in config file.")
+if business_postgres_port is None:
+    raise ValueError("'BUSINESS_POSTGRES_PORT' is not found in config file.")
 
-postgres_password: str | None = os.getenv("POSTGRES_PASSWORD", None)
+business_postgres_user: str | None = os.getenv("BUSINESS_POSTGRES_USER", None)
 
-if postgres_password is None:
-    raise ValueError("'POSTGRES_PASSWORD' is not found in config file.")
+if business_postgres_user is None:
+    raise ValueError("'BUSINESS_POSTGRES_USER' is not found in config file.")
 
-postgres_db: str | None = os.getenv("POSTGRES_DB", None)
+business_postgres_password: str | None = os.getenv("BUSINESS_POSTGRES_PASSWORD", None)
 
-if postgres_db is None:
-    raise ValueError("'POSTGRES_DB' is not found in config file.")
+if business_postgres_password is None:
+    raise ValueError("'BUSINESS_POSTGRES_PASSWORD' is not found in config file.")
 
-external_db_url: str = f"postgresql+psycopg2://{postgres_user}:{postgres_password}@pgsql:{postgres_port}/{postgres_db}"
+business_postgres_db: str | None = os.getenv("BUSINESS_POSTGRES_DB", None)
 
-__all__ = ["external_db_url"]
+if business_postgres_db is None:
+    raise ValueError("'BUSINESS_POSTGRES_DB' is not found in config file.")
+
+external_db_url: str = (
+    f"postgresql+psycopg2://{business_postgres_user}:{business_postgres_password}"
+    f"@{business_postgres_host}:{business_postgres_port}/{business_postgres_db}"
+)
+
+__all__ = [
+    "external_db_url",
+]
