@@ -43,13 +43,6 @@ class ContextManager:
 
         with self.external.begin() as connection:
             for table_name in table_names:
-                # Tables of "chat_histories" and "short_memories" are part of internal database.
-                # As we use the same instance of PostgreSQL for both internal and external databases, we need to skip these tables during inspection.
-                # In reality, these tables won't exist in external database.
-                # Mind to remove this condition if using separate instances for internal and external databases.
-                if table_name in ["chat_histories", "short_memories"]:
-                    continue
-
                 columns: list[dict[str, Any]] = inspector.get_columns(table_name)
                 table_columns[table_name] = []
 
