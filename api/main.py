@@ -5,6 +5,10 @@
 import uuid
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
+from typing import (
+    Any,
+    Literal
+)
 
 # third
 import json
@@ -25,6 +29,11 @@ from context import load_analytical_sandbox_bootstrap, load_infographic_sandbox_
 from context.system_prompts import prompt_dict
 from memory import MemoryManager
 from memory.database import internal_db_url
+from memory.models import (
+    StateTransition,
+    StateTransitionCreate,
+    StateTransitionShow,
+)
 from memory.models.chat_history import ChatHistory
 
 
@@ -57,12 +66,40 @@ def _stream_graph(
     Shared streaming logic for both initial runs and resumed runs.
     """
     graph: CompiledStateGraph[State] = app.state.graph
+
     config: RunnableConfig = {
         "configurable": {"thread_id": thread_id},
         "recursion_limit": 100,
     }
 
+    def _persist_transition(
+        sequence_num: int,
+        node_name: str,
+        event_type: Literal['update', 'interrupt', 'complete', 'error'],
+        payload: dict[str, Any] | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        """
+        Persist a redacted transition row into the agent DB audit log.
+
+        Verbatim payloads are intentionally not stored; only a sha256 digest,
+        byte size, and short preview are kept (see memory.models.state_transition).
+        """
+        create_state_transition_params: StateTransitionCreate = StateTransitionCreate(
+            thread_id=thread_id,
+            turn_num=graph_context.turn_num,
+            sequence_num=sequence_num,
+            node_name=node_name,
+            event_type=event_type,
+            payload=payload,
+            error_message=error_message,
+        )
+
+        app.state.memory_manager.store_state_transition(create_state_transition_params())
+
     def event_generator() -> Iterator[str]:
+        sequence_num: int = 0
+
         try:
             for event in graph.stream(
                 input=graph_input,
@@ -70,10 +107,22 @@ def _stream_graph(
                 stream_mode="updates",
                 config=config,
             ):
-                payload: str = json.dumps(jsonable_encoder({
+                sequence_num += 1
+                encoded_event: dict[str, Any] = jsonable_encoder(event)
+
+                node_name: str = next(iter(encoded_event.keys()))
+
+                _persist_transition(
+                    sequence_num=sequence_num,
+                    node_name=node_name,
+                    event_type="update",
+                    payload=encoded_event,
+                )
+
+                payload: str = json.dumps({
                     "type": "update",
-                    "data": event,
-                }))
+                    "data": encoded_event,
+                })
 
                 yield f"data: {payload}\n\n"
 
@@ -82,19 +131,47 @@ def _stream_graph(
             if graph_state.next:
                 for task in graph_state.tasks:
                     for interrupt in task.interrupts:
+                        sequence_num += 1
+                        encoded_interrupt: Any = jsonable_encoder(interrupt.value)
+
+                        _persist_transition(
+                            sequence_num=sequence_num,
+                            node_name=task.name or "<interrupt>",
+                            event_type="interrupt",
+                            payload=encoded_interrupt,
+                        )
+
                         payload = json.dumps({
                             "type": "interrupt",
                             "thread_id": thread_id,
-                            "data": interrupt.value,
+                            "data": encoded_interrupt,
                         })
 
                         yield f"data: {payload}\n\n"
             else:
+                sequence_num += 1
+
+                _persist_transition(
+                    sequence_num=sequence_num,
+                    node_name="<complete>",
+                    event_type="complete",
+                )
+
                 app.state.thread_contexts.pop(thread_id, None)
                 yield "data: {\"type\": \"complete\"}\n\n"
 
         except Exception as e:
+            sequence_num += 1
+
+            _persist_transition(
+                sequence_num=sequence_num,
+                node_name="<error>",
+                event_type="error",
+                error_message=str(e),
+            )
+
             app.state.thread_contexts.pop(thread_id, None)
+
             payload = json.dumps({
                 "type": "error",
                 "message": str(e),
@@ -149,6 +226,15 @@ async def get_chat_history() -> list[ChatHistory]:
     Endpoint to retrieve chat history.
     """
     return app.state.memory_manager.index_chat_history()
+
+@app.get("/agent/audit/{thread_id}")
+def get_state_transitions(thread_id: str) -> list[StateTransition]:
+    """
+    Endpoint to retrieve the persisted, redacted state-transition audit log for a given thread.
+    """
+    show_params: StateTransitionShow = StateTransitionShow(thread_id=thread_id)
+
+    return app.state.memory_manager.index_state_transitions_by_thread(show_params)
 
 @app.get("/health")
 def health_check():
