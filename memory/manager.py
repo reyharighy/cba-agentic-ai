@@ -14,8 +14,11 @@ from memory.models import (
     ChatHistoryShow,
     ShortMemory,
     ShortMemoryShow,
+    StateTransition,
+    StateTransitionShow,
     chat_histories,
     short_memories,
+    state_transitions,
 )
 
 
@@ -95,3 +98,26 @@ class MemoryManager:
             mappings: list[ShortMemory] = [ShortMemory.model_validate(row) for row in result.mappings()]
 
             return mappings.pop() if mappings else None
+
+    def store_state_transition(self, params: StateTransition) -> None:
+        """
+        Persist a single graph state transition (audit log row) into the agent DB.
+        """
+        with self.internal.begin() as connection:
+            connection.execute(state_transitions.insert().values(**params.model_dump()))
+
+    def index_state_transitions_by_thread(self, params: StateTransitionShow) -> list[StateTransition]:
+        """
+        Retrieve all persisted state transitions for a given thread, ordered by sequence.
+        """
+        with self.internal.begin() as connection:
+            result: CursorResult[Row[Any]] = connection.execute(
+                select(state_transitions)
+                .where(state_transitions.c.thread_id == params.thread_id)
+                .order_by(
+                    state_transitions.c.sequence_num,
+                    state_transitions.c.created_at,
+                )
+            )
+
+            return [StateTransition.model_validate(row) for row in result.mappings()]
