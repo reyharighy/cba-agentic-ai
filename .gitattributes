@@ -1,0 +1,34 @@
+# Auto line endings
+* text=auto
+
+# Force LF for shell scripts and Docker files
+*.sh text eol=lf
+*.bash text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+docker-compose.yaml text eol=lf
+.dockerignore text eol=lf
+
+# Force LF for Python files
+*.py text eol=lf
+*.pyi text eol=lf
+pyproject.toml text eol=lf
+uv.lock text eol=lf
+requirements.txt text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.mp3 binary
+*.gz binary
+*.zip binary
+*.7z binary
+*.ttf binary
+*.otf binary
+*.db binary
+*.sqlite binary
