@@ -23,14 +23,14 @@ def load_analytical_sandbox_bootstrap() -> dict[Literal["descriptive", "diagnost
 
     descriptive: str = ignore_warnings + pandas + numpy + df_load
     diagnostic: str = ignore_warnings + pandas + numpy + scipy + df_load
-    predictive: str = ignore_warnings + pandas + numpy + scipy + df_load
-    inferential: str = ignore_warnings + pandas + numpy + sklearn + df_load
+    inferential: str = ignore_warnings + pandas + numpy + scipy + df_load
+    predictive: str = ignore_warnings + pandas + numpy + sklearn + df_load
 
     return {
         "descriptive": descriptive,
         "diagnostic": diagnostic,
-        "predictive": predictive,
         "inferential": inferential,
+        "predictive": predictive,
     }
 
 
