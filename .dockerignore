@@ -33,16 +33,12 @@ wheels/
 docker-compose.yml
 Dockerfile
 
-# Notebooks
-.notebooks/
-
 # development artifacts
 .ruff_cache/
 .vscode/
 
-# markdown rendering assets
-Binary-Responsibility Agent Graph.png
-graph.png
+# notebook files
+notebook/
 
 # markdown files
 *.md

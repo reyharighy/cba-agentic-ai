@@ -17,7 +17,6 @@ wheels/
 
 # runtime artifacts
 context/datasets/dataset.csv
-memory/infographic/turn_num_*/
 
 # development artifacts
 .ruff_cache/

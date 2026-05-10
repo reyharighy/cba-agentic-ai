@@ -34,29 +34,7 @@ def load_analytical_sandbox_bootstrap() -> dict[Literal["descriptive", "diagnost
     }
 
 
-def load_infographic_sandbox_bootstrap() -> str:
-    """
-    Loads the infographic sandbox bootstrap code snippet.
-    """
-    warnings: str = "import warnings\n"
-    pandas: str = "import pandas as pd\n"
-    numpy: str = "import numpy as np\n"
-    graph_objects: str = "import plotly.graph_objects as go\n"
-    express: str = "import plotly.express as px\n\n"
-    ignore_warnings: str = "warnings.filterwarnings('ignore')\n"
-    df_load: str = "df = pd.read_csv('dataset.csv')\n"
-    df_transform: str = "\n" + "for column in df.columns:"
-    df_transform += "\n\t" + "if pd.api.types.is_object_dtype(df[column]):"
-    df_transform += "\n\t\t" + "try:"
-    df_transform += "\n\t\t\t" + "df[column] = pd.to_datetime(df[column])"
-    df_transform += "\n\t\t" + "except Exception as _:"
-    df_transform += "\n\t\t\t" + "pass\n\n"
-
-    return warnings + pandas + numpy + graph_objects + express + ignore_warnings + df_load + df_transform
-
-
 __all__ = [
     "ContextManager",
     "load_analytical_sandbox_bootstrap",
-    "load_infographic_sandbox_bootstrap",
 ]

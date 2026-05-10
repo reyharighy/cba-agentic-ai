@@ -22,14 +22,7 @@ from .analytical_plan import (
     ANALYTICAL_PLAN_FROM_ANALYTICAL_PLAN_OBSERVATION,
     ANALYTICAL_PLAN_OBSERVATION,
 )
-from .analytical_result import ANALYTICAL_RESULT
-from .infographic_requirement import INFOGRAPHIC_REQUIREMENT
-from .infographic_plan import (
-    INFOGRAPHIC_PLAN,
-    INFOGRAPHIC_PLAN_FROM_INFOGRAPHIC_PLAN_EXECUTION,
-    INFOGRAPHIC_PLAN_FROM_INFOGRAPHIC_PLAN_OBSERVATION,
-    INFOGRAPHIC_PLAN_OBSERVATION,
-)
+from .analytical_response import ANALYTICAL_RESPONSE
 from .summarization import SUMMARIZATION
 
 prompt_dict: dict[str, str] = {
@@ -50,12 +43,7 @@ prompt_dict: dict[str, str] = {
     "__analytical_plan_from_analytical_plan_execution": ANALYTICAL_PLAN_FROM_ANALYTICAL_PLAN_EXECUTION,
     "__analytical_plan_from_analytical_plan_observation": ANALYTICAL_PLAN_FROM_ANALYTICAL_PLAN_OBSERVATION,
     "__analytical_plan_observation": ANALYTICAL_PLAN_OBSERVATION,
-    "__analytical_result": ANALYTICAL_RESULT,
-    "__infographic_requirement": INFOGRAPHIC_REQUIREMENT,
-    "__infographic_plan": INFOGRAPHIC_PLAN,
-    "__infographic_plan_from_infographic_plan_execution": INFOGRAPHIC_PLAN_FROM_INFOGRAPHIC_PLAN_EXECUTION,
-    "__infographic_plan_from_infographic_plan_observation": INFOGRAPHIC_PLAN_FROM_INFOGRAPHIC_PLAN_OBSERVATION,
-    "__infographic_plan_observation": INFOGRAPHIC_PLAN_OBSERVATION,
+    "__analytical_response": ANALYTICAL_RESPONSE,
     "__summarization": SUMMARIZATION,
 }
 

@@ -8,9 +8,6 @@ from .structured_output import (
     DataRetrievalPlanObservation,
     AnalyticalPlan,
     AnalyticalPlanObservation,
-    InfographicRequirement,
-    InfographicPlan,
-    InfographicPlanObservation,
 )
 
 __all__ = [
@@ -22,7 +19,4 @@ __all__ = [
     "DataRetrievalPlanObservation",
     "AnalyticalPlan",
     "AnalyticalPlanObservation",
-    "InfographicRequirement",
-    "InfographicPlan",
-    "InfographicPlanObservation",
 ]

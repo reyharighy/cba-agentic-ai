@@ -1,0 +1,52 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	intent_comprehension(intent_comprehension)
+	request_classification(request_classification)
+	punt_response(punt_response)
+	context_distillation(context_distillation)
+	analytical_requirement(analytical_requirement)
+	direct_response(direct_response)
+	data_availability(data_availability)
+	data_unavailability_response(data_unavailability_response)
+	data_retrieval_plan(data_retrieval_plan)
+	data_retrieval_plan_execution(data_retrieval_plan_execution)
+	data_retrieval_plan_observation(data_retrieval_plan_observation)
+	analytical_plan(analytical_plan)
+	analytical_plan_execution(analytical_plan_execution)
+	analytical_plan_observation(analytical_plan_observation)
+	analytical_response(analytical_response)
+	summarization(summarization)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> intent_comprehension;
+	analytical_plan --> analytical_plan_execution;
+	analytical_plan_execution -.-> analytical_plan;
+	analytical_plan_execution -.-> analytical_plan_observation;
+	analytical_plan_observation -.-> analytical_plan;
+	analytical_plan_observation -.-> analytical_response;
+	analytical_requirement -.-> data_availability;
+	analytical_requirement -.-> direct_response;
+	analytical_response --> summarization;
+	context_distillation --> analytical_requirement;
+	data_availability -.-> data_retrieval_plan;
+	data_availability -.-> data_unavailability_response;
+	data_retrieval_plan -.-> data_availability;
+	data_retrieval_plan -.-> data_retrieval_plan_execution;
+	data_retrieval_plan_execution -.-> data_retrieval_plan;
+	data_retrieval_plan_execution -.-> data_retrieval_plan_observation;
+	data_retrieval_plan_observation -.-> analytical_plan;
+	data_retrieval_plan_observation -.-> data_retrieval_plan;
+	data_unavailability_response --> summarization;
+	direct_response --> summarization;
+	intent_comprehension --> request_classification;
+	request_classification -.-> context_distillation;
+	request_classification -.-> punt_response;
+	punt_response --> __end__;
+	summarization --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

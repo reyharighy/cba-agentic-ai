@@ -60,7 +60,7 @@ This branch provides a **cleanly separated architecture**, with emphasis on:
 ## Architecture: Binary-Responsibility Agent Graph
 
 <div align="center">
-  <img src="Binary-Responsibility Agent Graph.png" width="75%" />
+  <img src="notebook/Binary-Responsibility%20Agent%20Graph.png" width="75%" alt="Binary-Responsibility Agent Graph" />
 </div>
 
 <br>
@@ -98,12 +98,9 @@ Failures trigger targeted correction loops rather than global retries.
 
 ### 4. Visualization as a Downstream Concern
 
-Visualization and infographic generation are treated as **post-analysis consumers** of agent output:
-- analytical correctness is established first,
-- visual output is optional,
-- visualization failures do not invalidate analysis.
+Analytical correctness is established in the plan–execute–observe loop before the final conversational response. Optional visualization or chart generation as a separate post-processing step is **out of scope** for the current `main` orchestration graph; the agent focuses on grounded analytical explanation without an embedded visualization subgraph.
 
-This improves system robustness.
+This keeps the execution graph smaller and easier to reason about for conversational business analytics.
 
 ---
 
@@ -116,7 +113,8 @@ This improves system robustness.
 ├── context/            # Runtime context shared across agent nodes
 ├── docker_script/      # Database initialization & synthetic data seeding
 ├── language_model/     # LLM abstraction layer
-└── memory/             # Conversational and short-term memory persistence
+├── memory/             # Conversational and short-term memory persistence
+└── notebook/           # Agent graph export (Mermaid .txt, PNG) from get_mermaid_graph.ipynb
 ```
 
 ## Features

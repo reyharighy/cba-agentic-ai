@@ -15,9 +15,6 @@ from language_model.schema import (
     DataRetrievalPlanObservation,
     AnalyticalPlan,
     AnalyticalPlanObservation,
-    InfographicRequirement,
-    InfographicPlan,
-    InfographicPlanObservation,
 )
 
 
@@ -42,11 +39,6 @@ def make_initial_state(user_input: str) -> "State":
         analytical_plan=None,
         analytical_plan_execution=None,
         analytical_plan_observation=None,
-        analytical_result=None,
-        infographic_requirement=None,
-        infographic_plan=None,
-        infographic_plan_execution=None,
-        infographic_plan_observation=None,
         summarization=None,
     )
 
@@ -71,9 +63,4 @@ class State(MessagesState):
     analytical_plan: AnalyticalPlan | None
     analytical_plan_execution: Execution | None
     analytical_plan_observation: AnalyticalPlanObservation | None
-    analytical_result: AIMessage | None
-    infographic_requirement: InfographicRequirement | None
-    infographic_plan: InfographicPlan | None
-    infographic_plan_execution: Execution | None
-    infographic_plan_observation: InfographicPlanObservation | None
     summarization: AIMessage | None

@@ -4,7 +4,6 @@
 
 # standard
 import sys
-from pathlib import Path
 from typing import (
     Any,
     Literal,
@@ -39,7 +38,6 @@ from .state import State
 from .runtime import Context
 from context import ContextManager
 from context.database import external_db_url
-from context.datasets import dataset_file_path
 from language_model.provider import groq_gpt_120b_high
 from language_model.schema import (
     IntentComprehension,
@@ -50,13 +48,9 @@ from language_model.schema import (
     DataRetrievalPlanObservation,
     AnalyticalPlan,
     AnalyticalPlanObservation,
-    InfographicRequirement,
-    InfographicPlan,
-    InfographicPlanObservation,
 )
 from memory import MemoryManager
 from memory.database import internal_db_url
-from memory.infographic import infographic_dir_path
 
 MAX_CORRECTION_RETRIES: int = 3
 
@@ -596,7 +590,7 @@ class Graph:
     ) -> Command[
         Literal[
             "analytical_plan",
-            "analytical_result",
+            "analytical_response",
         ]
     ]:
         """
@@ -621,10 +615,10 @@ class Graph:
 
         if serialized_output.result_is_sufficient:
             return Command(
-                goto="analytical_result",
+                goto="analytical_response",
                 update={
                     "ui_payload": "Structuring insight...",
-                    "current_node": "analytical_result",
+                    "current_node": "analytical_response",
                     "analytical_plan_observation": serialized_output,
                 },
             )
@@ -639,9 +633,9 @@ class Graph:
             },
         )
 
-    def __analytical_result(self, state: State, runtime: Runtime[Context]) -> dict[str, Any]:
+    def __analytical_response(self, state: State, runtime: Runtime[Context]) -> dict[str, Any]:
         """
-        Node to handle analytical result.
+        Node to synthesize validated analytical execution into an interpretable response.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = self.composer.get_analytical_plan(state)
@@ -656,238 +650,18 @@ class Graph:
 
         llm_output: AIMessage = cast(AIMessage, llm.invoke(llm_input))
 
-        if runtime.context.enable_infographic:
-            return {
-                "ui_payload": "Identifying visual opportunities...",
-                "current_node": "infographic_requirement",
-                "analytical_result": llm_output,
-            }
-
-        return {
-            "ui_payload": "Wrapping up...",
-            "current_node": "analytical_response",
-            "analytical_result": llm_output,
-        }
-
-    def __infographic_requirement(
-        self, state: State, runtime: Runtime[Context]
-    ) -> Command[
-        Literal[
-            "analytical_response",
-            "infographic_plan",
-        ]
-    ]:
-        """
-        Node to handle infographic requirement.
-        """
-        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        system_message: SystemMessage = SystemMessage(system_prompt)
-
-        llm, llm_input = self.composer.get_runnable_with_input(
-            system_message=system_message,
-            state=state,
-            schema=InfographicRequirement,
-        )
-
-        llm_output = llm.invoke(llm_input)
-        serialized_output: InfographicRequirement = InfographicRequirement.model_validate(llm_output)
-
-        if serialized_output.infographic_is_required:
-            return Command(
-                goto="infographic_plan",
-                update={
-                    "ui_payload": "Architecting chart schema...",
-                    "current_node": "infographic_plan",
-                    "infographic_requirement": serialized_output,
-                },
-            )
-
-        return Command(
-            goto="analytical_response",
-            update={
-                "ui_payload": "Wrapping up...",
-                "current_node": "analytical_response",
-                "infographic_requirement": serialized_output,
-            },
-        )
-
-    def __analytical_response(self, state: State) -> dict[str, Any]:
-        """
-        Node to handle analytical response.
-        """
         return {
             "ui_payload": "Ready to go!",
             "current_node": "summarization",
-            "messages": [state["analytical_result"]],
+            "messages": [llm_output],
         }
-
-    def __infographic_plan(self, state: State, runtime: Runtime[Context]) -> dict[str, Any]:
-        """
-        Node to handle infographic plan.
-        """
-        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        context_prompt: str = self.composer.get_database_schema_info()
-        context_prompt += self.composer.get_data_retrieval_plan(state)
-        context_prompt += self.composer.get_dataframe_schema_info()
-        context_prompt += self.composer.get_infographic_requirement_rationale(state)
-
-        if state["infographic_plan"]:
-            context_prompt += self.composer.get_infographic_plan(state)
-
-        if state["infographic_plan_execution"]:
-            system_prompt = runtime.context.prompts_set[
-                sys._getframe(0).f_code.co_name + "_from_infographic_plan_execution"
-            ]
-
-            context_prompt += self.composer.get_infographic_plan_execution_feedback(state)
-
-        if state["infographic_plan_observation"]:
-            system_prompt = runtime.context.prompts_set[
-                sys._getframe(0).f_code.co_name + "_from_infographic_plan_observation"
-            ]
-
-            context_prompt += self.composer.get_infographic_plan_observation_feedback(state)
-
-        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
-
-        llm, llm_input = self.composer.get_runnable_with_input(
-            system_message=system_message,
-            state=state,
-            schema=InfographicPlan,
-        )
-
-        llm_output = llm.invoke(llm_input)
-        serialized_output: InfographicPlan = InfographicPlan.model_validate(llm_output)
-        serialized_output.python_code = serialized_output.python_code.replace("\\n", "\n")
-
-        return {
-            "ui_payload": "Painting insight canvas...",
-            "current_node": "infographic_plan_execution",
-            "infographic_plan": serialized_output,
-            "infographic_plan_execution": None,
-            "infographic_plan_observation": None,
-        }
-
-    def __infographic_plan_execution(
-        self, state: State, runtime: Runtime[Context]
-    ) -> Command[
-        Literal[
-            "infographic_plan",
-            "infographic_plan_observation",
-        ]
-    ]:
-        """
-        Node to handle infographic plan execution.
-        """
-        sandbox: Sandbox = self.composer.prepare_sandbox_environment()
-        code: str = self.composer.get_infographic_python_code(state, runtime, on_sandbox=True)
-        execution: Execution = sandbox.run_code(code)
-        sandbox.kill()
-
-        if execution.error:
-            return Command(
-                goto="infographic_plan",
-                update={
-                    "ui_payload": "Recalibrating visual map...",
-                    "current_node": "infographic_plan",
-                    "infographic_plan_execution": execution,
-                },
-            )
-
-        if state["infographic_plan"]:
-            infographic_file_path: Path = Path(
-                infographic_dir_path / f"turn_num_{runtime.context.turn_num}" / "infographic.py"
-            )
-
-            if not infographic_file_path.parent.exists():
-                infographic_file_path.parent.mkdir(parents=True, exist_ok=True)
-
-            with open(dataset_file_path, "rb") as dataset_file:
-                with open(infographic_file_path.parent / "dataset.csv", "xb") as file:
-                    file.write(dataset_file.read())
-
-            with open(infographic_file_path, "x", encoding="utf-8") as file:
-                content: str = "import streamlit as st\n"  # decouple this segment
-                content += "from pathlib import Path\n"
-                content += self.composer.get_infographic_python_code(state, runtime)
-                content += "\nst.plotly_chart(fig, on_select='ignore')\n"
-                content_list = content.split("\n")
-
-                for index, line in enumerate(content_list):
-                    if line == "df = pd.read_csv('dataset.csv')":
-                        content_list[index] = "df = pd.read_csv(Path(__file__).parent / 'dataset.csv')"
-                        break
-
-                file.write("\n".join(content_list))
-        else:
-            raise ValueError(f"'infographic_plan' state must not be empty in '{sys._getframe(0).f_code.co_name}' node")
-
-        return Command(
-            goto="infographic_plan_observation",
-            update={
-                "ui_payload": "Evaluating graphic fidelity...",
-                "current_node": "infographic_plan_observation",
-            },
-        )
-
-    def __infographic_plan_observation(
-        self, state: State, runtime: Runtime[Context]
-    ) -> Command[
-        Literal[
-            "infographic_plan",
-            "analytical_response",
-        ]
-    ]:
-        """
-        Node to handle infographic plan observation.
-        """
-        system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        context_prompt: str = self.composer.get_database_schema_info()
-        context_prompt += self.composer.get_data_retrieval_plan(state)
-        context_prompt += self.composer.get_dataframe_schema_info()
-        context_prompt += self.composer.get_infographic_requirement_rationale(state)
-        context_prompt += self.composer.get_infographic_plan(state)
-        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
-
-        llm, llm_input = self.composer.get_runnable_with_input(
-            system_message=system_message,
-            state=state,
-            schema=InfographicPlanObservation,
-        )
-
-        llm_output = llm.invoke(llm_input)
-        serialized_output: InfographicPlanObservation = InfographicPlanObservation.model_validate(llm_output)
-
-        if serialized_output.result_is_sufficient:
-            return Command(
-                goto="analytical_response",
-                update={
-                    "ui_payload": "Wrapping up...",
-                    "current_node": "analytical_response",
-                    "infographic_plan_observation": serialized_output,
-                },
-            )
-
-        return Command(
-            goto="infographic_plan",
-            update={
-                "ui_payload": "Refining the visual blueprint...",
-                "current_node": "infographic_plan",
-                "infographic_plan_observation": serialized_output,
-            },
-        )
 
     def __summarization(self, state: State, runtime: Runtime[Context]) -> dict[str, Any]:
         """
         Node to handle summarization.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        context_prompt: str = ""
-
-        if state["infographic_requirement"] and state["infographic_requirement"].infographic_is_required:
-            context_prompt += self.composer.get_infographic_plan(state)
-
-        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
+        system_message: SystemMessage = SystemMessage(system_prompt)
 
         llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
@@ -906,17 +680,6 @@ class Graph:
             "current_node": None,
             "summarization": llm_output,
         }
-
-    def _route_after_analytical_result(
-        self, state: State, runtime: Runtime[Context]
-    ) -> Literal["analytical_response", "infographic_requirement"]:
-        """
-        When infographics are disabled, bypass ``infographic_requirement`` so the LLM
-        never assesses whether a chart is needed.
-        """
-        if runtime.context.enable_infographic:
-            return "infographic_requirement"
-        return "analytical_response"
 
     def build_graph(
         self,
@@ -995,33 +758,8 @@ class Graph:
         )
 
         self.graph_builder.add_node(
-            node="analytical_result",
-            action=self.__analytical_result,
-        )
-
-        self.graph_builder.add_node(
-            node="infographic_requirement",
-            action=self.__infographic_requirement,
-        )
-
-        self.graph_builder.add_node(
             node="analytical_response",
             action=self.__analytical_response,
-        )
-
-        self.graph_builder.add_node(
-            node="infographic_plan",
-            action=self.__infographic_plan,
-        )
-
-        self.graph_builder.add_node(
-            node="infographic_plan_execution",
-            action=self.__infographic_plan_execution,
-        )
-
-        self.graph_builder.add_node(
-            node="infographic_plan_observation",
-            action=self.__infographic_plan_observation,
         )
 
         self.graph_builder.add_node(node="summarization", action=self.__summarization)
@@ -1049,22 +787,7 @@ class Graph:
             end_key="analytical_plan_execution",
         )
 
-        self.graph_builder.add_conditional_edges(
-            "analytical_result",
-            self._route_after_analytical_result,
-            {
-                "infographic_requirement": "infographic_requirement",
-                "analytical_response": "analytical_response",
-            },
-        )
-
         self.graph_builder.add_edge(start_key="analytical_response", end_key="summarization")
-
-        self.graph_builder.add_edge(
-            start_key="infographic_plan",
-            end_key="infographic_plan_execution",
-        )
-
         self.graph_builder.add_edge(start_key="summarization", end_key=END)
 
         return self.graph_builder.compile(checkpointer=MemorySaver())

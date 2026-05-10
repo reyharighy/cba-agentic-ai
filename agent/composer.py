@@ -48,9 +48,6 @@ from language_model.schema.structured_output import (
     DataAvailability,
     DataRetrievalPlan,
     DataRetrievalPlanObservation,
-    InfographicPlan,
-    InfographicPlanObservation,
-    InfographicRequirement,
     RequestClassification,
 )
 
@@ -188,9 +185,6 @@ class Composer:
                         )
 
             llm_input.extend(state["messages"])
-
-        if state["analytical_result"] and state["current_node"] != "summarization":
-            llm_input.extend([state["analytical_result"]])
 
         return (llm, llm_input)
 
@@ -383,60 +377,6 @@ class Composer:
         context_prompt += cast(AnalyticalPlanObservation, state["analytical_plan_observation"]).rationale
 
         return context_prompt
-
-    def get_infographic_requirement_rationale(self, state: State) -> str:
-        """
-        Retrieve the rationale for infographic requirement.
-        """
-        context_prompt: str = "\n\nRationale for the infographic requirement: "
-        context_prompt += cast(InfographicRequirement, state["infographic_requirement"]).rationale
-
-        return context_prompt
-
-    def get_infographic_plan(self, state: State) -> str:
-        """
-        Retrieve the infographic plan with rationale.
-        """
-        context_prompt: str = "\n\nInfographic plan that was generated to answer current request: "
-        context_prompt += str(cast(InfographicPlan, state["infographic_plan"]))
-
-        return context_prompt
-
-    def get_infographic_plan_execution_feedback(self, state: State) -> str:
-        """
-        Retrieve feedback for infographic plan execution errors.
-        """
-        context_prompt: str = "\n\nTraceback error logs from the sandbox environment: "
-        context_prompt += cast(ExecutionError, cast(Execution, state["infographic_plan_execution"]).error).traceback
-
-        return context_prompt
-
-    def get_infographic_plan_observation_feedback(self, state: State) -> str:
-        """
-        Retrieve feedback for infographic plan observation.
-        """
-        context_prompt: str = "\n\nFeedback why the infographic plan execution result is insufficient: "
-        context_prompt += cast(InfographicPlanObservation, state["infographic_plan_observation"]).rationale
-
-        return context_prompt
-
-    def get_infographic_python_code(self, state: State, runtime: Runtime[Context], on_sandbox: bool = False) -> str:
-        """
-        Retrieve the infographic Python code including bootstrap.
-        """
-        code: str = runtime.context.infographic_sandbox_bootstrap
-
-        for line in (
-            cast(InfographicPlan, state["infographic_plan"])
-            .python_code.replace("\\n", "\n")
-            .replace("\\t", "\t")
-            .split("\n")
-        ):
-            code += "\n" + line if line != "fig" else "" + "\n"
-
-        code += "\n_ = None" if on_sandbox else ""
-
-        return code
 
     # Should the following method be part of Composer class?
 
