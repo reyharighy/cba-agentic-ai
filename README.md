@@ -114,7 +114,7 @@ This keeps the execution graph smaller and easier to reason about for conversati
 ├── docker_script/      # Database initialization & synthetic data seeding
 ├── language_model/     # LLM abstraction layer
 ├── memory/             # Conversational and short-term memory persistence
-└── notebook/           # Agent graph export (Mermaid .txt, PNG) from get_mermaid_graph.ipynb
+└── notebook/           # Agent graph export from get_mermaid_graph.ipynb
 ```
 
 ## Features
