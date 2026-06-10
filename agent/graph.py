@@ -54,6 +54,7 @@ from memory.database import internal_db_url
 
 MAX_CORRECTION_RETRIES: int = 3
 
+
 class Graph:
     def __init__(self) -> None:
         """
@@ -256,9 +257,7 @@ class Graph:
         additional_context: str | None = None
 
         if state["data_retrieval_retry_count"] >= MAX_CORRECTION_RETRIES:
-            system_prompt = runtime.context.prompts_set[
-                sys._getframe(0).f_code.co_name + "_from_data_retrieval_plan"
-            ]
+            system_prompt = runtime.context.prompts_set[sys._getframe(0).f_code.co_name + "_from_data_retrieval_plan"]
 
             context_prompt = self.composer.get_data_retrieval_failure_summary(state)
             system_message = SystemMessage(system_prompt + context_prompt)
@@ -276,7 +275,9 @@ class Graph:
         context_prompt: str = self.composer.get_database_schema_info()
 
         if additional_context:
-            context_prompt += f"\n\nAdditional context provided by the user after failed retrieval attempts: {additional_context}"
+            context_prompt += (
+                f"\n\nAdditional context provided by the user after failed retrieval attempts: {additional_context}"
+            )
 
         system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
@@ -301,10 +302,7 @@ class Graph:
                 update["data_retrieval_retry_count"] = 0
                 update["data_retrieval_failure_history"] = []
 
-            return Command(
-                goto="data_retrieval_plan",
-                update=update
-            )
+            return Command(goto="data_retrieval_plan", update=update)
 
         return Command(
             goto="data_unavailability_response",

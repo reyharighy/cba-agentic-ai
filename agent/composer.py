@@ -85,6 +85,7 @@ _NON_READ_SQL_EXPRESSIONS: tuple[type[Expression], ...] = (
     exp.Rollback,
 )
 
+
 def _unwrap_query_root(expression: Expression) -> Expression:
     current: Expression = expression
 
@@ -92,6 +93,7 @@ def _unwrap_query_root(expression: Expression) -> Expression:
         current = current.this
 
     return current
+
 
 def _read_only_root_violation(tree: Expression) -> str | None:
     root: Expression = _unwrap_query_root(tree)
@@ -101,11 +103,13 @@ def _read_only_root_violation(tree: Expression) -> str | None:
 
     return f"only read-only SELECT queries are allowed (got {type(root).__name__})"
 
+
 def _non_read_ast_violation(tree: Expression) -> str | None:
     if forbidden := tree.find(*_NON_READ_SQL_EXPRESSIONS):
         return f"forbidden non read-only SQL ({type(forbidden).__name__})"
 
     return None
+
 
 def _select_into_violation(tree: Expression) -> str | None:
     for select in tree.find_all(exp.Select):

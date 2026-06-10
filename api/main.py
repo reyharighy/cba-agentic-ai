@@ -5,10 +5,7 @@
 import uuid
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
-from typing import (
-    Any,
-    Literal
-)
+from typing import Any, Literal
 
 # third
 import json
@@ -73,7 +70,7 @@ def _stream_graph(
     def _persist_transition(
         sequence_num: int,
         node_name: str,
-        event_type: Literal['update', 'interrupt', 'complete', 'error'],
+        event_type: Literal["update", "interrupt", "complete", "error"],
         payload: dict[str, Any] | None = None,
         error_message: str | None = None,
     ) -> None:
@@ -117,10 +114,12 @@ def _stream_graph(
                     payload=encoded_event,
                 )
 
-                payload: str = json.dumps({
-                    "type": "update",
-                    "data": encoded_event,
-                })
+                payload: str = json.dumps(
+                    {
+                        "type": "update",
+                        "data": encoded_event,
+                    }
+                )
 
                 yield f"data: {payload}\n\n"
 
@@ -139,11 +138,13 @@ def _stream_graph(
                             payload=encoded_interrupt,
                         )
 
-                        payload = json.dumps({
-                            "type": "interrupt",
-                            "thread_id": thread_id,
-                            "data": encoded_interrupt,
-                        })
+                        payload = json.dumps(
+                            {
+                                "type": "interrupt",
+                                "thread_id": thread_id,
+                                "data": encoded_interrupt,
+                            }
+                        )
 
                         yield f"data: {payload}\n\n"
             else:
@@ -156,7 +157,7 @@ def _stream_graph(
                 )
 
                 app.state.thread_contexts.pop(thread_id, None)
-                yield "data: {\"type\": \"complete\"}\n\n"
+                yield 'data: {"type": "complete"}\n\n'
 
         except Exception as e:
             sequence_num += 1
@@ -170,10 +171,12 @@ def _stream_graph(
 
             app.state.thread_contexts.pop(thread_id, None)
 
-            payload = json.dumps({
-                "type": "error",
-                "message": str(e),
-            })
+            payload = json.dumps(
+                {
+                    "type": "error",
+                    "message": str(e),
+                }
+            )
 
             yield f"data: {payload}\n\n"
 
@@ -216,12 +219,14 @@ def resume_agent(request: ResumeRequest) -> StreamingResponse:
 
     return _stream_graph(Command(resume=request.input), graph_context, request.thread_id)
 
+
 @app.get("/chat/history")
 async def get_chat_history() -> list[ChatHistory]:
     """
     Endpoint to retrieve chat history.
     """
     return app.state.memory_manager.index_chat_history()
+
 
 @app.get("/agent/audit/{thread_id}")
 def get_state_transitions(thread_id: str) -> list[StateTransition]:
@@ -231,6 +236,7 @@ def get_state_transitions(thread_id: str) -> list[StateTransition]:
     show_params: StateTransitionShow = StateTransitionShow(thread_id=thread_id)
 
     return app.state.memory_manager.index_state_transitions_by_thread(show_params)
+
 
 @app.get("/health")
 def health_check():
