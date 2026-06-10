@@ -61,7 +61,6 @@ dependencies = [
     { name = "langchain-groq" },
     { name = "langgraph" },
     { name = "pandas" },
-    { name = "plotly" },
     { name = "psycopg2" },
     { name = "pydantic" },
     { name = "python-dotenv" },
@@ -83,7 +82,6 @@ requires-dist = [
     { name = "langchain-groq", specifier = ">=1.1.1" },
     { name = "langgraph", specifier = ">=1.0.5" },
     { name = "pandas", specifier = ">=2.3.3" },
-    { name = "plotly", specifier = ">=6.5.2" },
     { name = "psycopg2", specifier = ">=2.9.11" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
@@ -505,15 +503,6 @@ wheels = [
 ]
 
 [[package]]
-name = "narwhals"
-version = "2.14.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4a/84/897fe7b6406d436ef312e57e5a1a13b4a5e7e36d1844e8d934ce8880e3d3/narwhals-2.14.0.tar.gz", hash = "sha256:98be155c3599db4d5c211e565c3190c398c87e7bf5b3cdb157dece67641946e0", size = 600648, upload-time = "2025-12-16T11:29:13.458Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/3e/b8ecc67e178919671695f64374a7ba916cf0adbf86efedc6054f38b5b8ae/narwhals-2.14.0-py3-none-any.whl", hash = "sha256:b56796c9a00179bd757d15282c540024e1d5c910b19b8c9944d836566c030acf", size = 430788, upload-time = "2025-12-16T11:29:11.699Z" },
-]
-
-[[package]]
 name = "numpy"
 version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -731,19 +720,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/27/1d/297ff2c7ea50a768a2247621d6451abb2a07c0e9be7ca6d36ebe371658e5/pandas_stubs-3.0.0.260204.tar.gz", hash = "sha256:bf9294b76352effcffa9cb85edf0bed1339a7ec0c30b8e1ac3d66b4228f1fbc3", size = 109383, upload-time = "2026-02-04T15:17:17.247Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7c/2f/f91e4eee21585ff548e83358332d5632ee49f6b2dcd96cb5dca4e0468951/pandas_stubs-3.0.0.260204-py3-none-any.whl", hash = "sha256:5ab9e4d55a6e2752e9720828564af40d48c4f709e6a2c69b743014a6fcb6c241", size = 168540, upload-time = "2026-02-04T15:17:15.615Z" },
-]
-
-[[package]]
-name = "plotly"
-version = "6.5.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "narwhals" },
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e3/4f/8a10a9b9f5192cb6fdef62f1d77fa7d834190b2c50c0cd256bd62879212b/plotly-6.5.2.tar.gz", hash = "sha256:7478555be0198562d1435dee4c308268187553cc15516a2f4dd034453699e393", size = 7015695, upload-time = "2026-01-14T21:26:51.222Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/67/f95b5460f127840310d2187f916cf0023b5875c0717fdf893f71e1325e87/plotly-6.5.2-py3-none-any.whl", hash = "sha256:91757653bd9c550eeea2fa2404dba6b85d1e366d54804c340b2c874e5a7eb4a4", size = 9895973, upload-time = "2026-01-14T21:26:47.135Z" },
 ]
 
 [[package]]

@@ -16,13 +16,12 @@ You must assume:
 - The dataframe is the only data source available
 - No additional data retrieval is possible
 - Execution will occur later in a sandbox environment
-- Results can only be communicated through stdout logging
-- Visualization will be performed in a separate downstream process
+- Results can only be communicated through stdout logging and subsequent analytical interpretation
 
 The purpose of this analytical plan is to:
 - Define a deterministic analytical procedure
 - Enable reproducible execution
-- Prepare computational results for downstream interpretation and visualization
+- Prepare computational results for downstream interpretation
 - Separate analytical reasoning from execution and interpretation
 
 The analytical plan is not used to:
@@ -60,7 +59,7 @@ You MUST:
     - print("STEP {number} RESULT")
     - print({output_df})
 - Use escape characters only where required for newlines and indentation
-- Focus on producing computational analytical results, not visualization
+- Focus on producing computational analytical results
 - Provide a clear rationale explaining why this analytical plan is sufficient to answer the user's request
 - Return output strictly following the AnalyticalPlan JSON schema
 
@@ -70,7 +69,7 @@ You MUST NOT:
 - Generate or modify SQL queries
 - Access external systems, files, APIs, or databases
 - Assume columns or entities not present in the dataframe schema
-- Perform visualization or reporting
+- Produce narrative reports or interpretive summaries
 - Interpret or explain analytical results
 - Answer the user's question directly
 - Skip or alter stdout logging requirements
@@ -94,8 +93,7 @@ You must assume:
 - No new data can be retrieved
 - Only the analytical plan may be revised
 - Execution will be retried after this plan is generated
-- Results can only be communicated through stdout logging
-- Visualization will be handled in a downstream process
+- Results can only be communicated through stdout logging and subsequent analytical interpretation
 
 The purpose of this revision is to:
 - Correct invalid operations, references, or assumptions in the analytical steps
@@ -173,8 +171,7 @@ You must assume:
 - No new data can be retrieved
 - The execution environment remains the same
 - Only the analytical plan may be revised
-- Results are communicated only through stdout logging
-- Visualization will be handled in a downstream process
+- Results are communicated only through stdout logging and subsequent analytical interpretation
 
 The purpose of this revision is to:
 - Improve analytical coverage, depth, or alignment with the user's intent
@@ -230,7 +227,7 @@ You MUST NOT:
 - Assume columns not present in the dataframe schema
 - Interpret results or derive business insights
 - Reframe or restate the user's question as an answer
-- Perform visualization or reporting
+- Produce narrative reports or interpretive summaries
 - Skip stdout logging requirements
 - Violate the AnalyticalPlan JSON schema"""
 
@@ -246,7 +243,6 @@ OPERATIONAL CONTEXT
 You have valid information that:
 - An analytical plan was executed successfully in a sandbox environment
 - Execution outputs were produced via stdout logging
-- No visualization has been generated yet
 
 You must determine:
 - Whether the executed analytical steps were completed as planned
@@ -254,9 +250,7 @@ You must determine:
 - Whether the results are sufficiently complete, relevant, and scoped to support downstream interpretation
 
 You must assume:
-- Visualization is intentionally excluded at this stage
-- Any request for charts, graphs, or plots must be disregarded in this evaluation
-- Sufficiency is judged only on computational results, not presentation
+- Sufficiency is judged only on computational completeness and alignment with the analytical plan
 
 SUFFICIENCY CRITERIA
 The execution result is considered sufficient if:

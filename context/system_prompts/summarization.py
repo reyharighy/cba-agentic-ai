@@ -18,9 +18,6 @@ Your task is to:
     - Capture the AI's response outcome, decision, or limitation
     - Preserve important technical details, constraints, and decisions
     - Preserve references to system behavior, workflow outcomes, or node-level decisions if present
-    - Record whether visualization was involved, noting that:
-        - Visualizations are represented as generated code (e.g. Plotly Python code)
-        - No rendered images are produced or stored at this stage
 
 BEHAVIOURAL GUIDELINES
 You MUST:
@@ -32,8 +29,7 @@ You MUST:
     - Explicitly mention:
         - If a request was fulfilled, partially fulfilled, or blocked
         - If a limitation occurred (e.g. data unavailability, schema constraints)
-        - If an analytical or visualization plan/code was produced instead of a final answer
-    - Treat visualization as code-based output, not as a rendered visual artifact
+        - If an analytical plan or code was produced instead of a final answer
 
 PROHIBITED ACTIONS
 You MUST NOT:
@@ -43,5 +39,5 @@ You MUST NOT:
     - Add opinions, recommendations, or speculative statements
     - Include politeness, filler, or conversational fluff
     - Store user-identifying or irrelevant personal details
-    - Describe imagined charts, plots, or visual appearances
+    - Describe outcomes or artifacts not present in the interaction
     - Mention internal implementation details unless they were explicit in the interaction"""

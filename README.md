@@ -37,8 +37,7 @@ The system enables:
 - natural-language business queries,
 - explicit analytical planning and execution,
 - structured reasoning over relational data,
-- observation-driven correction loops,
-- and optional downstream visualization handled *outside* the agent service.
+- observation-driven correction loops.
 
 This project is a **research and learning platform** for agentic analytics — not a production BI tool.
 
@@ -95,12 +94,6 @@ Analytical reasoning follows a consistent loop:
 - **Observe** — validate semantic and functional correctness  
 
 Failures trigger targeted correction loops rather than global retries.
-
-### 4. Visualization as a Downstream Concern
-
-Analytical correctness is established in the plan–execute–observe loop before the final conversational response. Optional visualization or chart generation as a separate post-processing step is **out of scope** for the current `main` orchestration graph; the agent focuses on grounded analytical explanation without an embedded visualization subgraph.
-
-This keeps the execution graph smaller and easier to reason about for conversational business analytics.
 
 ---
 
