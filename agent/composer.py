@@ -7,6 +7,7 @@
 # standard
 from typing import (
     Any,
+    Literal,
     cast,
 )
 from uuid import UUID
@@ -146,16 +147,20 @@ class Composer:
         state: State,
         system_message: SystemMessage,
         schema: type[BaseModel] | None = None,
+        language_model: BaseChatModel | None = None,
+        structured_output_method: Literal["json_schema", "json_mode", "function_calling"] = "json_schema",
     ) -> tuple[Runnable[LanguageModelInput, dict[Any, Any] | BaseModel] | BaseChatModel, list[AnyMessage]]:
         """
         Prepare the runnable language model and its message input.
         """
+        model: BaseChatModel = language_model or self.language_model
+
         if schema:
             llm = cast(
                 typ=Runnable[LanguageModelInput, dict[Any, Any] | BaseModel],
-                val=self.language_model.with_structured_output(
+                val=model.with_structured_output(
                     schema=schema,
-                    method="json_schema",
+                    method=structured_output_method,
                 ),
             )
 
@@ -167,7 +172,7 @@ class Composer:
                 stop_after_attempt=3,
             )
         else:
-            llm = self.language_model
+            llm = model
 
         llm_input: list[AnyMessage] = [system_message]
 
@@ -328,8 +333,13 @@ class Composer:
         code: str = runtime.context.analytical_sandbox_bootstrap[analysis_plan.analysis_type]
 
         for analytical_step in analysis_plan.plan:
-            for line in analytical_step.python_code.replace("\\n", "\n").replace("\\t", "\t").split("\n"):
-                code += "\n" + line + "\n"
+            step_code: str = analytical_step.python_code.replace("\\n", "\n").replace("\\t", "\t")
+            code += "\n" + step_code + "\n"
+
+            step_marker: str = f"STEP {analytical_step.number} RESULT"
+            if step_marker not in step_code:
+                code += f'\nprint("{step_marker}")\n'
+                code += f"print({analytical_step.output_df})\n"
 
         return code
 
@@ -369,7 +379,8 @@ class Composer:
         Retrieve the analytical plan execution result logs.
         """
         context_prompt: str = "\n\nExecution output logs of the analytical plan: "
-        context_prompt += cast(Execution, state["analytical_plan_execution"]).logs.stdout[0]
+        stdout: list[str] = cast(Execution, state["analytical_plan_execution"]).logs.stdout
+        context_prompt += stdout[0] if stdout else "(no output captured)"
 
         return context_prompt
 

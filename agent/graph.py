@@ -38,7 +38,7 @@ from .state import State
 from .runtime import Context
 from context import ContextManager
 from context.database import external_db_url
-from language_model.provider import groq_gpt_120b_high
+from language_model.provider import groq_gpt_120b_high, groq_qwen
 from language_model.schema import (
     IntentComprehension,
     RequestClassification,
@@ -528,6 +528,8 @@ class Graph:
             system_message=system_message,
             state=state,
             schema=AnalyticalPlan,
+            language_model=groq_qwen,
+            structured_output_method="function_calling",
         )
 
         llm_output = llm.invoke(llm_input)

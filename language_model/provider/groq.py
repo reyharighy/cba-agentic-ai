@@ -32,7 +32,7 @@ groq_gpt_120b_high: BaseChatModel = ChatGroq(
 )
 
 groq_qwen: BaseChatModel = ChatGroq(
-    model="meta-llama/llama-4-maverick-17b-128e-instruct",
+    model="qwen/qwen3-32b",
     temperature=0,
     max_tokens=None,
     timeout=None,
