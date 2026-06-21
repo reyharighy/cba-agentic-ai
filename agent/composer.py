@@ -142,6 +142,25 @@ class Composer:
 
         return context_prompt
 
+    def _uses_conversation_messages(self, state: State) -> bool:
+        """
+        Whether LLM input should include relevant turn transcripts and current messages
+        instead of distilled context alone.
+        """
+        current_node = state["current_node"]
+        if current_node is None:
+            return False
+
+        node_name = cast(str, current_node)
+        if node_name == "summarization":
+            return True
+        if node_name.endswith("_response") or node_name.endswith("_result"):
+            return True
+        if node_name == "data_availability" and state["analytical_requirement"] is None:
+            return True
+
+        return False
+
     def get_runnable_with_input(
         self,
         state: State,
@@ -176,11 +195,7 @@ class Composer:
 
         llm_input: list[AnyMessage] = [system_message]
 
-        if state["context_distillation"] and not (
-            cast(str, state["current_node"]).endswith("_response")
-            or cast(str, state["current_node"]).endswith("_result")
-            or state["current_node"] == "summarization"
-        ):
+        if state["context_distillation"] and not self._uses_conversation_messages(state):
             llm_input.extend([HumanMessage(state["context_distillation"].content)])
         else:
             if state["intent_comprehension"]:

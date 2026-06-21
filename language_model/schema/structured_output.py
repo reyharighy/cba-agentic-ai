@@ -16,7 +16,11 @@ class IntentComprehension(BaseModel):
 
     relevant_turns: list[str] = Field(
         ...,
-        description="List of relevant conversational turns that provide necessary context to understand the user's request",
+        description=(
+            "Numeric turn identifiers (as strings) for prior conversation turns strictly required to interpret "
+            "the current request. Include a turn when the request is an implicit follow-up (e.g. asking for "
+            "second rank, a difference, or a comparison) that depends on analytical results from that turn."
+        ),
     )
     rationale: str = Field(
         ...,
@@ -32,8 +36,14 @@ class RequestClassification(BaseModel):
     request_is_business_analytical_domain: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the user's request is within the business analytical domain. "
-            "Otherwise, set the value to False."
+            "Set True when the request is within the supported business analytics assistant scope: "
+            "questions about operational business data available through the connected database, "
+            "business intelligence or data-driven analysis, or follow-ups that reference entities, "
+            "time periods, metrics, or results from prior turns in the same session. "
+            "Set False only when the request is clearly outside that scope "
+            "(e.g. unrelated general knowledge, politics, entertainment, or topics with no connection "
+            "to operational business data). Do not set False merely because SQL or sandbox execution "
+            "may not be required."
         ),
     )
     rationale: str = Field(
@@ -50,8 +60,11 @@ class AnalyticalRequirement(BaseModel):
     analytical_process_is_required: bool = Field(
         ...,
         description=(
-            "The value must be set to True if the analytical process is required to answer the user's request. "
-            "Otherwise, set the value to False."
+            "Set True when answering requires new data retrieval, recomputation, aggregation, or sandbox "
+            "execution that is not already available from relevant prior conversation turns. "
+            "Set False when the answer can be produced entirely from information already stated in "
+            "relevant prior turns (e.g. rankings, figures, comparisons, or conclusions from a completed "
+            "analytical response) without accessing the database or sandbox."
         ),
     )
     rationale: str = Field(

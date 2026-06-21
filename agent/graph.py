@@ -106,7 +106,8 @@ class Graph:
         Node to handle request classification.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        system_message: SystemMessage = SystemMessage(system_prompt)
+        context_prompt: str = self.composer.get_conversation_summary_list()
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
         llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,
@@ -186,7 +187,8 @@ class Graph:
         Node to handle analytical requirement.
         """
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
-        system_message: SystemMessage = SystemMessage(system_prompt)
+        context_prompt: str = self.composer.get_conversation_summary_list()
+        system_message: SystemMessage = SystemMessage(system_prompt + context_prompt)
 
         llm, llm_input = self.composer.get_runnable_with_input(
             system_message=system_message,

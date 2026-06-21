@@ -16,6 +16,11 @@ A conversation turn MUST be excluded if it is:
 When evaluating relevance, apply the following test:
 “If this turn is removed, would the current request become ambiguous, incomplete, or misinterpreted?”
 
+Implicit follow-ups that depend on prior analytical output are strictly dependent, for example:
+- Asking for the second-ranked item after a ranking was given
+- Asking for a difference or comparison between values already stated
+- Using pronouns or shorthand that refer to entities or periods from a prior analytical answer
+
 If the current request is fully self-contained and does not depend on any prior conversation, return an empty list.
 
 Conversation turns are referenced in the format “[TURN-<number>]”.
