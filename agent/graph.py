@@ -63,7 +63,7 @@ class Graph:
         self.composer: Composer = Composer(
             context_manager=ContextManager(external_db_url),
             memory_manager=MemoryManager(internal_db_url),
-            language_model=groq_gpt_120b_high,
+            default_model=groq_gpt_120b_high,
         )
 
         self.graph_builder: StateGraph[State, Context, State, State] = StateGraph(
@@ -528,7 +528,7 @@ class Graph:
             system_message=system_message,
             state=state,
             schema=AnalyticalPlan,
-            language_model=groq_qwen,
+            model=groq_qwen,
             structured_output_method="function_calling",
         )
 

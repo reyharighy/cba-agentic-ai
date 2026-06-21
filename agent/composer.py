@@ -122,14 +122,14 @@ def _select_into_violation(tree: Expression) -> str | None:
 
 class Composer:
     def __init__(
-        self, context_manager: ContextManager, memory_manager: MemoryManager, language_model: BaseChatModel
+        self, context_manager: ContextManager, memory_manager: MemoryManager, default_model: BaseChatModel
     ) -> None:
         """
         Initialize the composer with access to contextual runtime and memory management.
         """
         self.context_manager: ContextManager = context_manager
         self.memory_manager: MemoryManager = memory_manager
-        self.language_model: BaseChatModel = language_model
+        self.default_model: BaseChatModel = default_model
 
     def get_conversation_summary_list(self) -> str:
         """
@@ -147,18 +147,18 @@ class Composer:
         state: State,
         system_message: SystemMessage,
         schema: type[BaseModel] | None = None,
-        language_model: BaseChatModel | None = None,
+        model: BaseChatModel | None = None,
         structured_output_method: Literal["json_schema", "json_mode", "function_calling"] = "json_schema",
     ) -> tuple[Runnable[LanguageModelInput, dict[Any, Any] | BaseModel] | BaseChatModel, list[AnyMessage]]:
         """
         Prepare the runnable language model and its message input.
         """
-        model: BaseChatModel = language_model or self.language_model
+        resolved_model: BaseChatModel = model or self.default_model
 
         if schema:
             llm = cast(
                 typ=Runnable[LanguageModelInput, dict[Any, Any] | BaseModel],
-                val=model.with_structured_output(
+                val=resolved_model.with_structured_output(
                     schema=schema,
                     method=structured_output_method,
                 ),
@@ -172,7 +172,7 @@ class Composer:
                 stop_after_attempt=3,
             )
         else:
-            llm = model
+            llm = resolved_model
 
         llm_input: list[AnyMessage] = [system_message]
 
