@@ -179,6 +179,7 @@ class Composer:
         if state["context_distillation"] and not (
             cast(str, state["current_node"]).endswith("_response")
             or cast(str, state["current_node"]).endswith("_result")
+            or state["current_node"] == "summarization"
         ):
             llm_input.extend([HumanMessage(state["context_distillation"].content)])
         else:
