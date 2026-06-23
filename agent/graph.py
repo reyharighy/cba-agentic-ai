@@ -36,9 +36,9 @@ from langgraph.types import Command, interrupt
 from .composer import Composer
 from .scenario_test_hooks import (
     force_analytical_observation_retry_once,
-    force_data_retrieval_observation_retry_once,
     forced_analytical_observation_rationale,
     forced_data_retrieval_observation_rationale,
+    should_force_data_retrieval_observation_insufficient,
 )
 from .state import State
 from .runtime import Context
@@ -309,6 +309,7 @@ class Graph:
                 update["messages"] = [HumanMessage(content=additional_context)]
                 update["data_retrieval_retry_count"] = 0
                 update["data_retrieval_failure_history"] = []
+                update["post_interrupt_resume"] = True
 
             return Command(goto="data_retrieval_plan", update=update)
 
@@ -465,10 +466,13 @@ class Graph:
         """
         Node to handle data retrieval plan observation.
         """
-        if force_data_retrieval_observation_retry_once(state):
+        if should_force_data_retrieval_observation_insufficient(
+            state,
+            max_correction_retries=MAX_CORRECTION_RETRIES,
+        ):
             serialized_output = DataRetrievalPlanObservation(
                 result_is_sufficient=False,
-                rationale=forced_data_retrieval_observation_rationale(),
+                rationale=forced_data_retrieval_observation_rationale(state),
             )
 
             return Command(
