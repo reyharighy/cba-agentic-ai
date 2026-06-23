@@ -34,6 +34,10 @@ from langgraph.types import Command, interrupt
 
 # internal
 from .composer import Composer
+from .scenario_test_hooks import (
+    force_data_retrieval_observation_retry_once,
+    forced_data_retrieval_observation_rationale,
+)
 from .state import State
 from .runtime import Context
 from context import ContextManager
@@ -459,6 +463,26 @@ class Graph:
         """
         Node to handle data retrieval plan observation.
         """
+        if force_data_retrieval_observation_retry_once(state):
+            serialized_output = DataRetrievalPlanObservation(
+                result_is_sufficient=False,
+                rationale=forced_data_retrieval_observation_rationale(),
+            )
+
+            return Command(
+                goto="data_retrieval_plan",
+                update={
+                    "ui_payload": "Refining retrieval strategy...",
+                    "current_node": "data_retrieval_plan",
+                    "data_retrieval_plan_observation": serialized_output,
+                    "data_retrieval_retry_count": state["data_retrieval_retry_count"] + 1,
+                    "data_retrieval_failure_history": [
+                        *state["data_retrieval_failure_history"],
+                        f"Observation deemed insufficient: {serialized_output.rationale}",
+                    ],
+                },
+            )
+
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = self.composer.get_database_schema_info()
         context_prompt += self.composer.get_data_retrieval_plan(state)
