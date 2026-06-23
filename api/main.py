@@ -92,8 +92,15 @@ def _stream_graph(
 
         app.state.memory_manager.store_state_transition(create_state_transition_params())
 
+    def _normalize_interrupt_payload(value: Any) -> dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+
+        return {"message": value}
+
     def event_generator() -> Iterator[str]:
         sequence_num: int = 0
+        interrupt_emitted: bool = False
 
         try:
             for event in graph.stream(
@@ -106,6 +113,36 @@ def _stream_graph(
                 encoded_event: dict[str, Any] = jsonable_encoder(event)
 
                 node_name: str = next(iter(encoded_event.keys()))
+
+                if node_name == "__interrupt__":
+                    interrupt_emitted = True
+
+                    for interrupt_entry in encoded_event.get("__interrupt__", []):
+                        interrupt_value: Any = (
+                            interrupt_entry.get("value")
+                            if isinstance(interrupt_entry, dict)
+                            else interrupt_entry
+                        )
+                        interrupt_payload: dict[str, Any] = _normalize_interrupt_payload(interrupt_value)
+
+                        _persist_transition(
+                            sequence_num=sequence_num,
+                            node_name="data_availability",
+                            event_type="interrupt",
+                            payload=interrupt_payload,
+                        )
+
+                        payload = json.dumps(
+                            {
+                                "type": "interrupt",
+                                "thread_id": thread_id,
+                                "data": interrupt_value,
+                            }
+                        )
+
+                        yield f"data: {payload}\n\n"
+
+                    continue
 
                 _persist_transition(
                     sequence_num=sequence_num,
@@ -126,27 +163,29 @@ def _stream_graph(
             graph_state: StateSnapshot = graph.get_state(config)
 
             if graph_state.next:
-                for task in graph_state.tasks:
-                    for interrupt in task.interrupts:
-                        sequence_num += 1
-                        encoded_interrupt: Any = jsonable_encoder(interrupt.value)
+                if not interrupt_emitted:
+                    for task in graph_state.tasks:
+                        for interrupt in task.interrupts:
+                            sequence_num += 1
+                            encoded_interrupt: Any = jsonable_encoder(interrupt.value)
+                            interrupt_payload = _normalize_interrupt_payload(encoded_interrupt)
 
-                        _persist_transition(
-                            sequence_num=sequence_num,
-                            node_name=task.name or "<interrupt>",
-                            event_type="interrupt",
-                            payload=encoded_interrupt,
-                        )
+                            _persist_transition(
+                                sequence_num=sequence_num,
+                                node_name=task.name or "<interrupt>",
+                                event_type="interrupt",
+                                payload=interrupt_payload,
+                            )
 
-                        payload = json.dumps(
-                            {
-                                "type": "interrupt",
-                                "thread_id": thread_id,
-                                "data": encoded_interrupt,
-                            }
-                        )
+                            payload = json.dumps(
+                                {
+                                    "type": "interrupt",
+                                    "thread_id": thread_id,
+                                    "data": encoded_interrupt,
+                                }
+                            )
 
-                        yield f"data: {payload}\n\n"
+                            yield f"data: {payload}\n\n"
             else:
                 sequence_num += 1
 
