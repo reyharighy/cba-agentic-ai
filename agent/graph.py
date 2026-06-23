@@ -35,7 +35,9 @@ from langgraph.types import Command, interrupt
 # internal
 from .composer import Composer
 from .scenario_test_hooks import (
+    force_analytical_observation_retry_once,
     force_data_retrieval_observation_retry_once,
+    forced_analytical_observation_rationale,
     forced_data_retrieval_observation_rationale,
 )
 from .state import State
@@ -622,6 +624,23 @@ class Graph:
         """
         Node to handle analytical plan observation.
         """
+        if force_analytical_observation_retry_once(state):
+            serialized_output = AnalyticalPlanObservation(
+                result_is_sufficient=False,
+                rationale=forced_analytical_observation_rationale(),
+            )
+
+            return Command(
+                goto="analytical_plan",
+                update={
+                    "ui_payload": "Enhancing analytical precision...",
+                    "current_node": "analytical_plan",
+                    "analytical_plan_execution": None,
+                    "analytical_plan_observation": serialized_output,
+                    "analytical_retry_count": state["analytical_retry_count"] + 1,
+                },
+            )
+
         system_prompt: str = runtime.context.prompts_set[sys._getframe(0).f_code.co_name]
         context_prompt: str = self.composer.get_database_schema_info()
         context_prompt += self.composer.get_data_retrieval_plan(state)

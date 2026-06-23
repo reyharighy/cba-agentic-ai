@@ -39,6 +39,7 @@ def make_initial_state(user_input: str) -> "State":
         analytical_plan=None,
         analytical_plan_execution=None,
         analytical_plan_observation=None,
+        analytical_retry_count=0,
         summarization=None,
     )
 
@@ -63,4 +64,5 @@ class State(MessagesState):
     analytical_plan: AnalyticalPlan | None
     analytical_plan_execution: Execution | None
     analytical_plan_observation: AnalyticalPlanObservation | None
+    analytical_retry_count: int
     summarization: AIMessage | None
