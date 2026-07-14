@@ -119,9 +119,7 @@ def _stream_graph(
 
                     for interrupt_entry in encoded_event.get("__interrupt__", []):
                         interrupt_value: Any = (
-                            interrupt_entry.get("value")
-                            if isinstance(interrupt_entry, dict)
-                            else interrupt_entry
+                            interrupt_entry.get("value") if isinstance(interrupt_entry, dict) else interrupt_entry
                         )
                         interrupt_payload: dict[str, Any] = _normalize_interrupt_payload(interrupt_value)
 
