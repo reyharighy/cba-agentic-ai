@@ -683,113 +683,41 @@ class Graph:
             "summarization": llm_output,
         }
 
-    def build_graph(
-        self,
-    ) -> CompiledStateGraph[State, Context]:
+    def build_graph(self) -> CompiledStateGraph[State, Context]:
         """
         Construct and compile the analytical execution graph.
         """
-        self.graph_builder.add_node(
-            node="intent_comprehension",
-            action=self.__intent_comprehension,
-        )
+        for name, action in (
+            ("intent_comprehension", self.__intent_comprehension),
+            ("request_classification", self.__request_classification),
+            ("punt_response", self.__punt_response),
+            ("context_distillation", self.__context_distillation),
+            ("analytical_requirement", self.__analytical_requirement),
+            ("direct_response", self.__direct_response),
+            ("data_availability", self.__data_availability),
+            ("data_unavailability_response", self.__data_unavailability_response),
+            ("data_retrieval_plan", self.__data_retrieval_plan),
+            ("data_retrieval_plan_execution", self.__data_retrieval_plan_execution),
+            ("data_retrieval_plan_observation", self.__data_retrieval_plan_observation),
+            ("analytical_plan", self.__analytical_plan),
+            ("analytical_plan_execution", self.__analytical_plan_execution),
+            ("analytical_plan_observation", self.__analytical_plan_observation),
+            ("analytical_response", self.__analytical_response),
+            ("summarization", self.__summarization),
+        ):
+            self.graph_builder.add_node(node=name, action=action)
 
-        self.graph_builder.add_node(
-            node="request_classification",
-            action=self.__request_classification,
-        )
-
-        self.graph_builder.add_node(
-            node="punt_response",
-            action=self.__punt_response,
-        )
-
-        self.graph_builder.add_node(
-            node="context_distillation",
-            action=self.__context_distillation,
-        )
-
-        self.graph_builder.add_node(
-            node="analytical_requirement",
-            action=self.__analytical_requirement,
-        )
-
-        self.graph_builder.add_node(
-            node="direct_response",
-            action=self.__direct_response,
-        )
-
-        self.graph_builder.add_node(
-            node="data_availability",
-            action=self.__data_availability,
-        )
-
-        self.graph_builder.add_node(
-            node="data_unavailability_response",
-            action=self.__data_unavailability_response,
-        )
-
-        self.graph_builder.add_node(
-            node="data_retrieval_plan",
-            action=self.__data_retrieval_plan,
-        )
-
-        self.graph_builder.add_node(
-            node="data_retrieval_plan_execution",
-            action=self.__data_retrieval_plan_execution,
-        )
-
-        self.graph_builder.add_node(
-            node="data_retrieval_plan_observation",
-            action=self.__data_retrieval_plan_observation,
-        )
-
-        self.graph_builder.add_node(
-            node="analytical_plan",
-            action=self.__analytical_plan,
-        )
-
-        self.graph_builder.add_node(
-            node="analytical_plan_execution",
-            action=self.__analytical_plan_execution,
-        )
-
-        self.graph_builder.add_node(
-            node="analytical_plan_observation",
-            action=self.__analytical_plan_observation,
-        )
-
-        self.graph_builder.add_node(
-            node="analytical_response",
-            action=self.__analytical_response,
-        )
-
-        self.graph_builder.add_node(node="summarization", action=self.__summarization)
-
-        self.graph_builder.add_edge(start_key=START, end_key="intent_comprehension")
-
-        self.graph_builder.add_edge(
-            start_key="intent_comprehension",
-            end_key="request_classification",
-        )
-
-        self.graph_builder.add_edge(start_key="punt_response", end_key=END)
-
-        self.graph_builder.add_edge(start_key="direct_response", end_key="summarization")
-
-        self.graph_builder.add_edge(start_key="context_distillation", end_key="analytical_requirement")
-
-        self.graph_builder.add_edge(
-            start_key="data_unavailability_response",
-            end_key="summarization",
-        )
-
-        self.graph_builder.add_edge(
-            start_key="analytical_plan",
-            end_key="analytical_plan_execution",
-        )
-
-        self.graph_builder.add_edge(start_key="analytical_response", end_key="summarization")
-        self.graph_builder.add_edge(start_key="summarization", end_key=END)
+        for start, end in (
+            (START, "intent_comprehension"),
+            ("intent_comprehension", "request_classification"),
+            ("punt_response", END),
+            ("direct_response", "summarization"),
+            ("context_distillation", "analytical_requirement"),
+            ("data_unavailability_response", "summarization"),
+            ("analytical_plan", "analytical_plan_execution"),
+            ("analytical_response", "summarization"),
+            ("summarization", END),
+        ):
+            self.graph_builder.add_edge(start_key=start, end_key=end)
 
         return self.graph_builder.compile(checkpointer=MemorySaver())
