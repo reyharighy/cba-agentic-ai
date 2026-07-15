@@ -40,7 +40,7 @@ _DATASETS_DOC: Path = _DATASETS_DIR / "DATASETS.md"
 
 def _parse_dataset_id(raw: str) -> int:
     """
-    Parse EXTERNAL_DATASET values such as ``3`` or ``dataset_3``.
+    Parse EXTERNAL_DATASET values such as ``1`` or ``dataset_1``.
     """
     value: str = raw.strip()
     match: re.Match[str] | None = re.fullmatch(r"dataset_(\d+)", value, re.IGNORECASE)
@@ -222,7 +222,7 @@ def main() -> None:
     if os.getenv("ENABLE_EXTERNAL_DB_SEEDING", "true").lower() != "true":
         return
 
-    dataset_id: int = _parse_dataset_id(os.getenv("EXTERNAL_DATASET", "3"))
+    dataset_id: int = _parse_dataset_id(os.getenv("EXTERNAL_DATASET", "1"))
     table_name: str = os.getenv("EXTERNAL_DB_TABLE_NAME", "business_data").strip()
 
     if not table_name:
