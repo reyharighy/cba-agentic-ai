@@ -201,22 +201,27 @@ GET /health
 
 This project depends on an external PostgreSQL database to simulate business data.
 
-- Synthetic data is stored in docker_script/synthetic_data.csv
-- The script external_database_factory.py:
-  - creates the schema,
-  - populates the database,
+- Local CSV datasets live in `docker_script/datasets/` (see [`docker_script/datasets/DATASETS.md`](docker_script/datasets/DATASETS.md))
+- The script [`external_database_factory.py`](docker_script/external_database_factory.py):
+  - selects a dataset via `EXTERNAL_DATASET`,
+  - infers the PostgreSQL schema from CSV columns,
+  - loads rows into a fixed table name (`EXTERNAL_DB_TABLE_NAME`, default `business_data`),
   - runs automatically on container startup if enabled.
 
-Controlled via environment variable:
+Controlled via environment variables:
 
 ```env
 ENABLE_EXTERNAL_DB_SEEDING=true
+EXTERNAL_DATASET=3
+EXTERNAL_DB_TABLE_NAME=business_data
 ```
+
+`EXTERNAL_DATASET` accepts `1`–`4` or `dataset_1` … `dataset_4`. Change it and restart the container to switch domains between test runs.
 
 This allows:
 
 - zero-setup onboarding for new users,
-- reproducible analytical scenarios,
+- reproducible analytical scenarios across multiple business domains,
 - safe experimentation without real business data.
 
 ## Notes for Contributors
