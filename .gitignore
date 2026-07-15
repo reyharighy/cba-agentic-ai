@@ -18,6 +18,9 @@ wheels/
 # runtime artifacts
 context/datasets/dataset.csv
 
+# local seed datasets (large CSVs; not committed)
+docker_script/datasets/
+
 # development artifacts
 .ruff_cache/
 .vscode/
