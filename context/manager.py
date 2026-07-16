@@ -62,8 +62,6 @@ class ContextManager:
                             "LIMIT 1"
                             if isinstance(column["type"], UUID)
                             else "LIMIT 2"
-                            if isinstance(column["type"], NUMERIC) or isinstance(column["type"], INTEGER)
-                            else ""
                         )
 
                         sql_query: TextClause = text(f"""

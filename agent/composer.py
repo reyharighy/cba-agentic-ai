@@ -302,7 +302,7 @@ class Composer:
                     elif is_numeric_dtype(df[column]):
                         col_value_dict[column] = (str(df[column].dtype), df[column].unique()[:2])
                     else:
-                        col_value_dict[column] = (str(df[column].dtype), df[column].unique())
+                        col_value_dict[column] = (str(df[column].dtype), df[column].unique()[:2])
 
             for col_name, values in col_value_dict.items():
                 dset_attrs += f"\n- {col_name} ({values[0]}): {list(str(value) for value in values[1])}"
@@ -463,10 +463,11 @@ class Composer:
         """
         Prepare the sandbox environment with the dataset CSV file.
         """
-        sandbox: Sandbox = Sandbox.create()
+        sandbox: Sandbox = Sandbox.create(timeout=1200)
+        sandbox.set_timeout(1200)
 
         with open(dataset_file_path, "rb") as dataset:
-            sandbox.files.write("dataset.csv", dataset.read())
+            sandbox.files.write("dataset.csv", dataset.read(), request_timeout=900)
 
         return sandbox
 
