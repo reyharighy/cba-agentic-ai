@@ -11,7 +11,7 @@ Berkas di sini **dapat di-commit** ke Git (berbeda dari `.docs/` yang diabaikan)
 | **P2** | [`p2-penjualan-kendaraan/`](p2-penjualan-kendaraan/) | `2` | `dataset_2.csv` | Penjualan kendaraan |
 | **P3** | [`p3-e-commerce/`](p3-e-commerce/) | `3` | `dataset_3.csv` | E-commerce |
 | **P4** | [`p4-crm/`](p4-crm/) | `4` | `dataset_4.csv` | CRM / churn |
-| **P5** | `p5-chocolate-sales/` *(belum diuji)* | `5` | `dataset_5.csv` | Penjualan cokelat |
+| **P5** | [`p5-chocolate-sales/`](p5-chocolate-sales/) | `5` | `dataset_5.csv` | Penjualan cokelat |
 
 Rincian seeding dan sumber data: [`DATASETS.md`](DATASETS.md).
 
@@ -49,5 +49,5 @@ S6a memaksa observasi *insufficient* sekali sementara eksekusi sandbox berhasil;
 | Profil | Tujuan | Output skripsi |
 | ------ | ------ | -------------- |
 | P1 | Dokumentasi rinci referensi | Subbab 5.3, Tabel 15–22 |
-| P2–P4 | Uji generalitas struktural | Tabel 24–26 |
-| Agregat | Ringkasan lintas profil | Tabel 27 |
+| P2–P5 | Uji generalitas struktural | Tabel 24–26 (P2–P4); P5 perluasan agregat |
+| Agregat | Ringkasan lintas profil | **40** kombinasi (P1–P5 × S1–S8) |
