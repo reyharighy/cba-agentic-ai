@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helper for scenario execution (P1–P4) — run from repo root:
+# Shared helper for scenario execution (P1–P5) — run from repo root:
 #   source tests/run_helper.sh
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

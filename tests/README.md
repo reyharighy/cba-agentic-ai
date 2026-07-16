@@ -1,6 +1,6 @@
 # Laporan Pengujian Lintas Profil
 
-Folder ini menyimpan hasil pengujian skenario S1–S8 per profil data bisnis (P1–P4).
+Folder ini menyimpan hasil pengujian skenario S1–S8 per profil data bisnis (P1–P5).
 Berkas di sini **dapat di-commit** ke Git (berbeda dari `.docs/` yang diabaikan).
 
 ## Pemetaan profil dan dataset
@@ -11,6 +11,7 @@ Berkas di sini **dapat di-commit** ke Git (berbeda dari `.docs/` yang diabaikan)
 | **P2** | [`p2-penjualan-kendaraan/`](p2-penjualan-kendaraan/) | `2` | `dataset_2.csv` | Penjualan kendaraan |
 | **P3** | [`p3-e-commerce/`](p3-e-commerce/) | `3` | `dataset_3.csv` | E-commerce |
 | **P4** | [`p4-crm/`](p4-crm/) | `4` | `dataset_4.csv` | CRM / churn |
+| **P5** | `p5-chocolate-sales/` *(belum diuji)* | `5` | `dataset_5.csv` | Penjualan cokelat |
 
 Rincian seeding dan sumber data: [`DATASETS.md`](DATASETS.md).
 
