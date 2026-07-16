@@ -54,10 +54,10 @@ docker compose exec pgsql-agent psql -U cba_agent -d agent_memory -c \
 
 ## Helper
 
-[`run_helper.sh`](run_helper.sh) — fungsi `reset_memory`, `run_stream`, `run_resume`, `set_harness`, dll.
+[`tests/run_helper.sh`](../run_helper.sh) — fungsi `reset_memory`, `run_stream`, `run_resume`, `set_harness`, dll. (Bersama untuk semua profil P1–P4.)
 
 ```sh
-source tests/p2-penjualan-kendaraan/run_helper.sh
+source tests/run_helper.sh
 ```
 
 ## Berkas laporan

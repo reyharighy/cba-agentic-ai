@@ -14,6 +14,14 @@ Berkas di sini **dapat di-commit** ke Git (berbeda dari `.docs/` yang diabaikan)
 
 Rincian seeding: [`docker_script/datasets/DATASETS.md`](../docker_script/datasets/DATASETS.md).
 
+## Helper eksekusi
+
+[`run_helper.sh`](run_helper.sh) — skrip bersama untuk semua profil: `reset_memory`, `run_stream`, `run_resume`, `set_harness`, dll.
+
+```sh
+source tests/run_helper.sh
+```
+
 ## Urutan pelaksanaan (semua profil)
 
 | Blok | Skenario | Reset memori |
