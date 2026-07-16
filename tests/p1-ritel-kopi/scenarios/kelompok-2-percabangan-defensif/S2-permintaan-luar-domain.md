@@ -9,7 +9,6 @@
 | Skenario | S2 |
 | Tanggal run | 2026-07-16 |
 | `turn_num` sebelum run | 1 (setelah S1, sesi sama) |
-| `thread_id` | `87f3395e-f321-45eb-9d95-45a839755128` |
 | Test harness | Tidak |
 
 ## Masukan

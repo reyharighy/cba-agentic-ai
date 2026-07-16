@@ -9,7 +9,6 @@
 | Skenario | S3 |
 | Tanggal run | 2026-07-16 |
 | `turn_num` sebelum run | 2 |
-| `thread_id` | `f06b25e3-4c26-4484-a0e0-63d75f28d886` |
 | Test harness | Tidak |
 | Prasyarat | S1 selesai pada sesi yang sama |
 

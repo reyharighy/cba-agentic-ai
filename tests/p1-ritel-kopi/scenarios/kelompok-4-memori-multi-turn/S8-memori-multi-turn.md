@@ -22,7 +22,6 @@
 | Field | Nilai |
 | ----- | ----- |
 | Masukan | Produk kopi apa yang paling laris pada bulan Januari berdasarkan total net price? |
-| `thread_id` | `7e035e58-c6f6-4558-86f6-043e6b1b4773` |
 | Jalur | Pipeline analitik penuh → `summarization` → `complete` |
 | Hasil | **Americano with Milk** — 1604.72 |
 
@@ -31,7 +30,6 @@
 | Field | Nilai |
 | ----- | ----- |
 | Masukan | Bagaimana dengan bulan sebelumnya? |
-| `thread_id` | `6ef30709-c44b-4db6-a184-98b4f8e05dda` |
 | Jalur | Pipeline analitik penuh (Desember) → `summarization` → `complete` |
 | Hasil | **Americano with Milk** — 1759.02 (Desember) |
 

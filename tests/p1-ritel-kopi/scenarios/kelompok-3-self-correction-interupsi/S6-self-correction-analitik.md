@@ -8,7 +8,6 @@
 | Kelompok | K3 — Self-correction & interupsi |
 | Skenario | S6 |
 | Tanggal run | 2026-07-16 |
-| `thread_id` | `6990025b-e24e-4d06-8cb9-c0c14c6db6bd` |
 | Test harness | `SCENARIO_TEST_FORCE_ANALYTICAL_RETRY_ONCE=true` |
 
 ## Masukan

@@ -9,7 +9,6 @@
 | Skenario | S4 |
 | Tanggal run | 2026-07-16 |
 | `turn_num` sebelum run | 0 (reset memori) |
-| `thread_id` | `d3f0b3df-454e-4497-b9ec-60eff2a5d1e8` |
 | Test harness | Tidak |
 
 ## Masukan

@@ -8,7 +8,6 @@
 | Kelompok | K3 — Self-correction & interupsi |
 | Skenario | S7 |
 | Tanggal run | 2026-07-16 |
-| `thread_id` | `45087ff3-c5e5-476b-a3e9-e9efc1c9ae8f` |
 | Test harness | `SCENARIO_TEST_FORCE_DATA_RETRIEVAL_INTERRUPT=true` |
 
 ## Masukan awal
@@ -48,6 +47,6 @@ Varian tertinggi Januari: **Americano with Milk** (total net_price **1604.72**).
 | -------- | -------- |
 | Peristiwa `interrupt` pada stream awal | Ya |
 | Harness memicu kegagalan retrieval berulang | Ya |
-| Resume dengan `thread_id` berhasil | Ya |
+| Resume berhasil | Ya |
 | Alur resume berakhir `complete` | Ya |
 | **Lulus struktural** | **Ya** |
