@@ -12,7 +12,7 @@ Berkas di sini **dapat di-commit** ke Git (berbeda dari `.docs/` yang diabaikan)
 | **P3** | [`p3-e-commerce/`](p3-e-commerce/) | `3` | `dataset_3.csv` | E-commerce |
 | **P4** | [`p4-crm/`](p4-crm/) | `4` | `dataset_4.csv` | CRM / churn |
 
-Rincian seeding: [`docker_script/datasets/DATASETS.md`](../docker_script/datasets/DATASETS.md).
+Rincian seeding dan sumber data: [`DATASETS.md`](DATASETS.md).
 
 ## Helper eksekusi
 

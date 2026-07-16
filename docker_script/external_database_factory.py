@@ -35,7 +35,7 @@ _DATE_LIKE_COLUMN: re.Pattern[str] = re.compile(
     re.IGNORECASE,
 )
 _DATASETS_DIR: Path = Path(__file__).resolve().parent / "datasets"
-_DATASETS_DOC: Path = _DATASETS_DIR / "DATASETS.md"
+_DATASETS_DOC: Path = Path(__file__).resolve().parent.parent / "tests" / "DATASETS.md"
 
 
 def _parse_dataset_id(raw: str) -> int:

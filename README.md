@@ -201,7 +201,7 @@ GET /health
 
 This project depends on an external PostgreSQL database to simulate business data.
 
-- Local CSV datasets live in `docker_script/datasets/` (see [`docker_script/datasets/DATASETS.md`](docker_script/datasets/DATASETS.md))
+- Local CSV datasets live in `docker_script/datasets/` (see [`tests/DATASETS.md`](tests/DATASETS.md))
 - The script [`external_database_factory.py`](docker_script/external_database_factory.py):
   - selects a dataset via `EXTERNAL_DATASET`,
   - infers the PostgreSQL schema from CSV columns,
