@@ -55,6 +55,7 @@ from language_model.schema.structured_output import (
 # internal
 from .state import State
 from .runtime import Context
+from .scenario_test_hooks import is_forced_analytical_observation_rationale
 from context import ContextManager
 from context.datasets import dataset_file_path, unlink_dataset_file
 from memory import MemoryManager
@@ -385,8 +386,20 @@ class Composer:
         """
         Retrieve feedback for analytical plan observation.
         """
+        observation = cast(AnalyticalPlanObservation, state["analytical_plan_observation"])
         context_prompt: str = "\n\nFeedback why the analytical plan execution result is insufficient: "
-        context_prompt += cast(AnalyticalPlanObservation, state["analytical_plan_observation"]).rationale
+        context_prompt += observation.rationale
+
+        if is_forced_analytical_observation_rationale(observation.rationale):
+            context_prompt += (
+                "\n\nNote: Execution succeeded; revise the analytical plan — not sandbox code."
+            )
+
+        if state["analytical_plan"]:
+            context_prompt += self.get_analytical_plan(state, original=True)
+
+        if state["analytical_plan_execution"]:
+            context_prompt += self.get_analytical_plan_execution_result(state)
 
         return context_prompt
 

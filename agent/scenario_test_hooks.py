@@ -80,3 +80,10 @@ def forced_analytical_observation_rationale() -> str:
     Rationale recorded when the test harness forces an insufficient analytical observation.
     """
     return _FORCED_ANALYTICAL_OBSERVATION_RATIONALE
+
+
+def is_forced_analytical_observation_rationale(rationale: str) -> bool:
+    """
+    Return True when the observation rationale was produced by the S6 test harness.
+    """
+    return _FORCED_ANALYTICAL_OBSERVATION_RATIONALE in rationale
