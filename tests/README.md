@@ -9,7 +9,7 @@ Berkas di sini **dapat di-commit** ke Git (berbeda dari `.docs/` yang diabaikan)
 | ------ | -------------- | ------------------ | -------- | ------ |
 | **P1** | [`p1-ritel-kopi/`](p1-ritel-kopi/) | `1` | `dataset_1.csv` | Ritel kopi (referensi) |
 | **P2** | [`p2-penjualan-kendaraan/`](p2-penjualan-kendaraan/) | `2` | `dataset_2.csv` | Penjualan kendaraan |
-| P3 | `p3-e-commerce/` *(rencana)* | `3` | `dataset_3.csv` | E-commerce |
+| **P3** | [`p3-e-commerce/`](p3-e-commerce/) | `3` | `dataset_3.csv` | E-commerce |
 | P4 | `p4-crm/` *(rencana)* | `4` | `dataset_4.csv` | CRM / churn |
 
 Rincian seeding: [`docker_script/datasets/DATASETS.md`](../docker_script/datasets/DATASETS.md).
