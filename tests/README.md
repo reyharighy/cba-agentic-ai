@@ -25,6 +25,16 @@ Rincian seeding: [`docker_script/datasets/DATASETS.md`](../docker_script/dataset
 
 Panduan operasional: [`.docs/markdowns/panduan-pelaksanaan-skenario-uji.md`](../.docs/markdowns/panduan-pelaksanaan-skenario-uji.md) *(lokal, tidak di-commit)*.
 
+## S6a vs S6b (self-correction analitik)
+
+| | **S6a (resmi, harness)** | **S6b (jalur alami)** |
+| -- | ------------------------ | --------------------- |
+| Pemicu | `SCENARIO_TEST_FORCE_ANALYTICAL_RETRY_ONCE=true` | `execution.error` dari sandbox |
+| Uji | Loop struktural plan ↔ observation | Koreksi kode dari traceback |
+| Pass rate | Masuk matrix S6 | Tidak wajib; variasi LLM |
+
+S6a memaksa observasi *insufficient* sekali sementara eksekusi sandbox berhasil; replan harus mempertahankan stdout dan rencana sebelumnya. S6b terjadi saat kode analitik gagal di sandbox dan agen memperbaiki dari traceback.
+
 ## Tujuan laporan per profil
 
 | Profil | Tujuan | Output skripsi |
