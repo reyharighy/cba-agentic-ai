@@ -510,14 +510,16 @@ class Graph:
         if state["analytical_plan"]:
             context_prompt += self.composer.get_analytical_plan(state, original=True)
 
-        if state["analytical_plan_execution"]:
+        execution = state.get("analytical_plan_execution")
+        observation = state.get("analytical_plan_observation")
+
+        if execution and execution.error:
             system_prompt = runtime.context.prompts_set[
                 sys._getframe(0).f_code.co_name + "_from_analytical_plan_execution"
             ]
 
             context_prompt += self.composer.get_analytical_plan_execution_feedback(state)
-
-        if state["analytical_plan_observation"]:
+        elif observation is not None and not observation.result_is_sufficient:
             system_prompt = runtime.context.prompts_set[
                 sys._getframe(0).f_code.co_name + "_from_analytical_plan_observation"
             ]
@@ -630,7 +632,6 @@ class Graph:
             update={
                 "ui_payload": "Enhancing analytical precision...",
                 "current_node": "analytical_plan",
-                "analytical_plan_execution": None,
                 "analytical_plan_observation": serialized_output,
             },
         )

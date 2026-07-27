@@ -216,7 +216,7 @@ EXTERNAL_DATASET=3
 EXTERNAL_DB_TABLE_NAME=business_data
 ```
 
-`EXTERNAL_DATASET` accepts `1`–`4` or `dataset_1` … `dataset_4`. Change it and restart the container to switch domains between test runs.
+`EXTERNAL_DATASET` accepts `1`–`5` or `dataset_1` … `dataset_5`. Change it and restart the container to switch the active business domain.
 
 This allows:
 

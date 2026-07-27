@@ -50,8 +50,8 @@ def _parse_dataset_id(raw: str) -> int:
     else:
         dataset_id = int(value)
 
-    if dataset_id not in (1, 2, 3, 4):
-        raise ValueError(f"EXTERNAL_DATASET must be 1-4 or dataset_1 ... dataset_4, got {raw!r}")
+    if dataset_id not in (1, 2, 3, 4, 5):
+        raise ValueError(f"EXTERNAL_DATASET must be 1-5 or dataset_1 ... dataset_5, got {raw!r}")
 
     return dataset_id
 

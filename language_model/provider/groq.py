@@ -32,8 +32,10 @@ groq_gpt_120b_high: BaseChatModel = ChatGroq(
 )
 
 groq_qwen: BaseChatModel = ChatGroq(
-    model="qwen/qwen3-32b",
+    model="openai/gpt-oss-120b",
     temperature=0,
     max_tokens=None,
+    reasoning_format="parsed",
+    reasoning_effort="high",
     timeout=None,
 )

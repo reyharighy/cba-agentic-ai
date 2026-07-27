@@ -385,8 +385,21 @@ class Composer:
         """
         Retrieve feedback for analytical plan observation.
         """
+        observation = cast(AnalyticalPlanObservation, state["analytical_plan_observation"])
         context_prompt: str = "\n\nFeedback why the analytical plan execution result is insufficient: "
-        context_prompt += cast(AnalyticalPlanObservation, state["analytical_plan_observation"]).rationale
+        context_prompt += observation.rationale
+
+        execution = state.get("analytical_plan_execution")
+        if execution is not None and execution.error is None:
+            context_prompt += (
+                "\n\nNote: Execution succeeded; revise the analytical plan — not sandbox code."
+            )
+
+        if state["analytical_plan"]:
+            context_prompt += self.get_analytical_plan(state, original=True)
+
+        if state["analytical_plan_execution"]:
+            context_prompt += self.get_analytical_plan_execution_result(state)
 
         return context_prompt
 
